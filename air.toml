@@ -1,0 +1,32 @@
+# air.toml
+
+# Racine du projet
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # Commande pour recompiler et relancer uniquement l’API
+  cmd = "go run ./cmd/api"
+  bin = "tmp/api"
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  exclude_dir = ["vendor", "tmp"]
+  exclude_file = []
+  delay = 1000
+  follow_symlink = true
+  kill_delay = 500
+  log = "air.log"
+
+# Log
+[log]
+  time = true
+
+# Couleurs de la sortie (facultatif)
+[color]
+  main = "yellow"
+  watcher = "cyan"
+  build = "green"
+  runner = "magenta"
+
+# Nettoyage à la sortie
+[misc]
+  clean_on_exit = true

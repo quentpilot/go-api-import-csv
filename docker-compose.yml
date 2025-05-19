@@ -1,0 +1,37 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    #command: air
+    command: go run ./cmd/api
+    volumes:
+      - .:/app
+      - shared-data:/shared
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rabbitmq
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: go run ./cmd/worker
+    volumes:
+      - .:/app
+      - shared-data:/shared
+    depends_on:
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # web interface : http://localhost:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+volumes:
+  shared-data: # share volume between services to save and read uploaded files
