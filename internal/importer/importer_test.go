@@ -1,10 +1,10 @@
 package importer
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
+	"github.com/fatih/color"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,13 +54,12 @@ func TestProcessFile_InvalidCSV(t *testing.T) {
 	// Call ProcessFile
 	err = ProcessFile(tempFile.Name())
 	assert.Error(t, err)
-	fmt.Println("Error caught:", err)
-
+	color.Green("Error caught: %v", err)
 }
 
 func TestProcessFile_FileNotFound(t *testing.T) {
 	// Call ProcessFile with a non-existent file
 	err := ProcessFile("non_existent_file.csv")
 	assert.Error(t, err)
-	fmt.Println("Error caught:", err)
+	color.Green("Error caught:", err, "\n")
 }

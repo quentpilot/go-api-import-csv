@@ -27,7 +27,7 @@ clean:
 
 # Run local tests
 test-local:
-	go test -v ./...
+	go test ./...
 
 # Run test into Docker
 test:

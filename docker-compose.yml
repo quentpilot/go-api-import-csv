@@ -3,16 +3,13 @@ services:
       build:
         context: .
         dockerfile: ./docker/Dockerfile
-      command: go test ./cmd/api
+      command: sh docker/test.sh
       volumes:
         - .:/app
   api:
     build:
       context: .
       dockerfile: ./docker/Dockerfile
-    #command: ["air","-c", "air.toml", "go", "run", "./cmd/api"]
-    #command: air -c air.toml
-    #command: go run ./cmd/api
     command: reflex -c reflex.conf
     volumes:
       - .:/app
@@ -26,8 +23,6 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile
-    #command: go run ./cmd/worker
-    #command: ["./docker/wait-for-rabbit.sh", "rabbitmq", "5672", "go", "run", "./cmd/worker"]
     command: ["./docker/wait-for-rabbit.sh", "rabbitmq", "5672", "reflex", "-c", "reflex.worker.conf"]
     volumes:
       - .:/app

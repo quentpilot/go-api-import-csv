@@ -51,9 +51,9 @@ func ConsumeImportJobs() {
 		log.Fatal("Connect to RabbitMQ:", err)
 	}
 
-	msgs, err := ch.Consume("import_queue", "", true, false, false, false, nil)
+	msgs, err := ch.Consume("import_queue", "", false, false, false, false, nil)
 	if err != nil {
-		log.Fatal("Consume Jobs:", err)
+		log.Fatal("Error while consuming message:", err)
 	}
 
 	for msg := range msgs {
@@ -76,5 +76,7 @@ func ConsumeImportJobs() {
 				log.Println("File has been successful deleted:", job.Filepath)
 			}
 		}
+		msg.Ack(false)
+		log.Println("Message acknowledged")
 	}
 }
