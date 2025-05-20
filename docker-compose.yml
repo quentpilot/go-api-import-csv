@@ -1,4 +1,11 @@
 services:
+  test:
+      build:
+        context: .
+        dockerfile: ./docker/Dockerfile
+      command: go test ./cmd/api
+      volumes:
+        - .:/app
   api:
     build:
       context: .

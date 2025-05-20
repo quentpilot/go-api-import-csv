@@ -11,6 +11,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type JobPublisher interface {
+	PublishImportJob(path string) error
+}
+
+type RabbitPublisher struct{}
+
+func (r *RabbitPublisher) PublishImportJob(path string) error {
+	return queue.PublishImportJob(path)
+}
+
 // Check if the file has a ".csv" extension
 func validateFileType(fileName string) error {
 	ext := strings.ToLower(filepath.Ext(fileName))
@@ -22,43 +32,46 @@ func validateFileType(fileName string) error {
 }
 
 // Upload file webservice
-func handleUpload(c *gin.Context) {
-	file, err := c.FormFile("file")
-	if err != nil {
-		log.Println("Error uploading file:", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing file"})
-		return
-	}
+func handleUpload(publisher JobPublisher) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		file, err := c.FormFile("file")
+		if err != nil {
+			log.Println("Error uploading file:", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing file"})
+			return
+		}
 
-	err = validateFileType(file.Filename)
-	if err != nil {
-		log.Println("Error validating file type is a .csv:", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+		err = validateFileType(file.Filename)
+		if err != nil {
+			log.Println("Error validating file type is a .csv:", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 
-	// Save uploaded file through shared volume
-	dst := filepath.Join("/shared", file.Filename)
-	if err := c.SaveUploadedFile(file, dst); err != nil {
-		log.Println("Error saving file:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
+		// Save uploaded file through shared volume
+		dst := filepath.Join("/shared", file.Filename)
+		if err := c.SaveUploadedFile(file, dst); err != nil {
+			log.Println("Error saving file:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
 
-	// Send file path to RabbitMQ
-	if err := queue.PublishImportJob(dst); err != nil {
-		log.Println("Error publishing job to RabbitMQ:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
-		return
-	}
+		// Send file path to RabbitMQ
+		if err := publisher.PublishImportJob(dst); err != nil {
+			log.Println("Error publishing job to RabbitMQ:", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
+			return
+		}
 
-	c.JSON(http.StatusOK, gin.H{"message": "File is being processed"})
+		c.JSON(http.StatusOK, gin.H{"message": "File is being processed"})
+	}
 }
 
 func main() {
 	r := gin.Default()
 
-	r.POST("/upload", handleUpload)
+	publisher := &RabbitPublisher{}
+	r.POST("/upload", handleUpload(publisher))
 
 	fmt.Println("API Server runs on localhost:8080")
 	r.Run(":8080")
