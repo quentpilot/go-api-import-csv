@@ -18,7 +18,7 @@ build:
 	docker-compose build
 
 # Build and run all services
-dev-build:
+run:
 	docker-compose up --build
 
 # Clean docker

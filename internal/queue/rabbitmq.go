@@ -3,6 +3,7 @@ package queue
 import (
 	"encoding/json"
 	"go-csv-import/internal/importer"
+	"go-csv-import/internal/logger"
 	"log"
 	"os"
 
@@ -46,6 +47,11 @@ func PublishImportJob(filepath string) error {
 }
 
 func ConsumeImportJobs() {
+	if err := logger.InitLogger("logs/worker.log"); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+		return
+	}
+
 	_, ch, err := getChannel()
 	if err != nil {
 		log.Fatal("Connect to RabbitMQ:", err)
@@ -76,6 +82,7 @@ func ConsumeImportJobs() {
 				log.Println("File has been successful deleted:", job.Filepath)
 			}
 		}
+
 		msg.Ack(false)
 		log.Println("Message acknowledged")
 	}

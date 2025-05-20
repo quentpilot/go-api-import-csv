@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/queue"
 	"log"
 	"net/http"
@@ -63,16 +64,22 @@ func handleUpload(publisher JobPublisher) gin.HandlerFunc {
 			return
 		}
 
+		log.Printf("File %s is being processed", file.Filename)
 		c.JSON(http.StatusOK, gin.H{"message": "File is being processed"})
 	}
 }
 
 func main() {
+	if err := logger.InitLogger("logs/api.log"); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+		return
+	}
+
 	r := gin.Default()
 
 	publisher := &RabbitPublisher{}
 	r.POST("/upload", handleUpload(publisher))
 
-	fmt.Println("API Server runs on localhost:8080")
+	log.Println("API Server runs on localhost:8080")
 	r.Run(":8080")
 }

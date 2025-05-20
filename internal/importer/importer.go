@@ -3,11 +3,20 @@ package importer
 import (
 	"encoding/csv"
 	"fmt"
+	"go-csv-import/internal/logger"
 	"io"
+	"log"
 	"os"
+	"time"
 )
 
 func ProcessFile(path string) error {
+	if err := logger.InitLogger("logs/worker.log"); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
+
+	start := time.Now()
+
 	f, err := os.Open(path)
 	if err != nil {
 		return err
@@ -21,7 +30,7 @@ func ProcessFile(path string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("CSV Headers : %v\n", headers)
+	log.Println("CSV Headers:", headers)
 
 	count := 0
 	for {
@@ -30,14 +39,16 @@ func ProcessFile(path string) error {
 			break
 		}
 		if err != nil {
+			log.Println("failed to read record: %w", err)
 			return fmt.Errorf("failed to read record: %w", err)
 		}
 
 		// Print each line
-		fmt.Printf("Read current line : %v\n", record)
+		log.Println("Read current line:", record)
 		count++
 	}
 
-	fmt.Printf("File %s treated with %d rows\n", path, count)
+	duration := time.Since(start)
+	log.Printf("File %s treated with %d rows in %v\n", path, count, duration)
 	return nil
 }
