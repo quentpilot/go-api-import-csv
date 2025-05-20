@@ -4,8 +4,11 @@ This project is a sandbox to test the power of Go.
 I wish I could compare performances between a Go and a PHP application.
 
 # Installation
+## Makefile
+Run command `make dev-build` to build docker and run all services.
+
 ## Docker
-Run command ```docker-compose up --build```
+Run command `docker-compose up --build`
 
 # Roadmap
 1. Implement testing

@@ -3,6 +3,7 @@ package importer
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -20,13 +21,16 @@ func ProcessFile(path string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("CSV Headers edit : %v\n", headers)
+	fmt.Printf("CSV Headers : %v\n", headers)
 
 	count := 0
 	for {
 		record, err := reader.Read()
-		if err != nil {
+		if err == io.EOF {
 			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read record: %w", err)
 		}
 
 		// Print each line
