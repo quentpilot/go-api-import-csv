@@ -2,7 +2,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./docker/Dockerfile
     #command: ["air","-c", "air.toml", "go", "run", "./cmd/api"]
     #command: air -c air.toml
     #command: go run ./cmd/api
@@ -12,16 +12,16 @@ services:
       - shared-data:/shared
     ports:
       - "8080:8080"
-    working_dir: /app
     depends_on:
       - rabbitmq
 
   worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: ./docker/Dockerfile
     #command: go run ./cmd/worker
-    command: ["./wait-for-rabbit.sh", "rabbitmq", "5672", "go", "run", "./cmd/worker"]
+    #command: ["./docker/wait-for-rabbit.sh", "rabbitmq", "5672", "go", "run", "./cmd/worker"]
+    command: ["./docker/wait-for-rabbit.sh", "rabbitmq", "5672", "reflex", "-c", "reflex.worker.conf"]
     volumes:
       - .:/app
       - shared-data:/shared

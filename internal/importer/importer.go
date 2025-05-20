@@ -20,7 +20,7 @@ func ProcessFile(path string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("CSV Headers : %v\n", headers)
+	fmt.Printf("CSV Headers edit : %v\n", headers)
 
 	count := 0
 	for {
