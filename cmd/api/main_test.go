@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"go-csv-import/internal/logger"
 	"io"
 	"mime/multipart"
 	"net/http"
@@ -15,11 +16,15 @@ import (
 
 type mockPublisher struct{}
 
-func (m mockPublisher) PublishImportJob(path string) error {
+func (m mockPublisher) PublishImportJob(path string, maxRows int) error {
 	return nil
 }
 
 func TestHandleUpload_ValidCSVFile(t *testing.T) {
+	if err := logger.InitCurrent("api", false); err != nil {
+		panic(err)
+	}
+
 	// Set up Gin router
 	router := gin.Default()
 	router.POST("/upload", handleUpload(mockPublisher{}))
@@ -61,6 +66,10 @@ func TestHandleUpload_ValidCSVFile(t *testing.T) {
 }
 
 func TestHandleUpload_InvalidFileType(t *testing.T) {
+	if err := logger.InitCurrent("api", false); err != nil {
+		panic(err)
+	}
+
 	// Set up Gin router
 	router := gin.Default()
 	router.POST("/upload", handleUpload(mockPublisher{}))
@@ -102,6 +111,9 @@ func TestHandleUpload_InvalidFileType(t *testing.T) {
 }
 
 func TestHandleUpload_MissingFile(t *testing.T) {
+	if err := logger.InitCurrent("api", false); err != nil {
+		panic(err)
+	}
 	// Set up Gin router
 	router := gin.Default()
 	router.POST("/upload", handleUpload(mockPublisher{}))

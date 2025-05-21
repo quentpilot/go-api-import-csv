@@ -3,16 +3,12 @@ package queue
 import (
 	"encoding/json"
 	"go-csv-import/internal/importer"
+	"go-csv-import/internal/job"
 	"go-csv-import/internal/logger"
 	"log"
-	"os"
 
 	"github.com/streadway/amqp"
 )
-
-type ImportJob struct {
-	Filepath string `json:"filepath"`
-}
 
 func getChannel() (*amqp.Connection, *amqp.Channel, error) {
 	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
@@ -29,7 +25,7 @@ func getChannel() (*amqp.Connection, *amqp.Channel, error) {
 	return conn, ch, err
 }
 
-func PublishImportJob(filepath string) error {
+func PublishImportJob(filepath string, maxRows int) error {
 	conn, ch, err := getChannel()
 	if err != nil {
 		return err
@@ -37,7 +33,7 @@ func PublishImportJob(filepath string) error {
 	defer conn.Close()
 	defer ch.Close()
 
-	job := ImportJob{Filepath: filepath}
+	job := job.ImportJob{FilePath: filepath, MaxRows: maxRows}
 	body, _ := json.Marshal(job)
 
 	return ch.Publish("", "import_queue", false, false, amqp.Publishing{
@@ -47,9 +43,8 @@ func PublishImportJob(filepath string) error {
 }
 
 func ConsumeImportJobs() {
-	if err := logger.InitLogger("logs/worker.log"); err != nil {
+	if err := logger.InitCurrent("worker", false); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
-		return
 	}
 
 	_, ch, err := getChannel()
@@ -63,27 +58,27 @@ func ConsumeImportJobs() {
 	}
 
 	for msg := range msgs {
-		var job ImportJob
+		var job job.ImportJob
 		if err := json.Unmarshal(msg.Body, &job); err != nil {
-			log.Println("Invalid Job format:", msg.Body, err)
+			logger.Current.Info("Invalid Job format:", "body", msg.Body, "error", err)
 			continue
 		}
 
-		log.Println("Try to treat file:", job.Filepath)
-		if err := importer.ProcessFile(job.Filepath); err != nil {
-			log.Println("Error Treatment:", err)
+		logger.Current.Info("Try to treat file:", "file", job.FilePath)
+		if err := importer.ProcessFile(job); err != nil {
+			logger.Current.Info("Error Treatment:", "error", err)
 		} else {
-			log.Println("File has been successful treated:", job.Filepath)
+			logger.Current.Info("File has been successful treated:", "file", job.FilePath)
 
-			err = os.Remove(job.Filepath)
+			err = job.Remove()
 			if err != nil {
-				log.Println("Cannot properly remove file '", job.Filepath, "'. Error:", err)
+				logger.Current.Info("Cannot properly remove file '", "file", job.FilePath, "error", err)
 			} else {
-				log.Println("File has been successful deleted:", job.Filepath)
+				logger.Current.Info("File has been successful deleted:", "file", job.FilePath)
 			}
 		}
 
 		msg.Ack(false)
-		log.Println("Message acknowledged")
+		logger.Current.Info("Message acknowledged")
 	}
 }

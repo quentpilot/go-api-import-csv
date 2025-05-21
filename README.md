@@ -5,7 +5,7 @@ I wish I could compare performances between a Go and a PHP application.
 
 # Installation
 ## Makefile
-Run command `make dev-build` to build docker and run all services.
+Run command `make run` to build docker and run all services.
 
 ## Docker
 Run command `docker-compose up --build`

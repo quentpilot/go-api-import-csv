@@ -1,11 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/queue"
 )
 
 func main() {
-	fmt.Println("Worker is listening...")
+	if err := logger.InitCurrent("worker", false); err != nil {
+		panic(err)
+	}
+	logger.Current.Info("Worker is listening...")
 	queue.ConsumeImportJobs()
 }

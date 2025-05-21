@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"go-csv-import/internal/job"
 	"os"
 	"testing"
 
@@ -19,8 +20,13 @@ func TestProcessFile_ValidCSV(t *testing.T) {
 	assert.NoError(t, err)
 	tempFile.Close()
 
+	job := job.ImportJob{
+		FilePath: tempFile.Name(),
+		MaxRows:  5000,
+	}
+
 	// Call ProcessFile
-	err = ProcessFile(tempFile.Name())
+	err = ProcessFile(job)
 	assert.NoError(t, err)
 }
 
@@ -35,8 +41,13 @@ func TestProcessFile_EmptyCSV(t *testing.T) {
 	assert.NoError(t, err)
 	tempFile.Close()
 
+	job := job.ImportJob{
+		FilePath: tempFile.Name(),
+		MaxRows:  5000,
+	}
+
 	// Call ProcessFile
-	err = ProcessFile(tempFile.Name())
+	err = ProcessFile(job)
 	assert.NoError(t, err)
 }
 
@@ -51,15 +62,26 @@ func TestProcessFile_InvalidCSV(t *testing.T) {
 	assert.NoError(t, err)
 	tempFile.Close()
 
+	job := job.ImportJob{
+		FilePath: tempFile.Name(),
+		MaxRows:  5000,
+	}
+
 	// Call ProcessFile
-	err = ProcessFile(tempFile.Name())
+	err = ProcessFile(job)
 	assert.Error(t, err)
 	color.Green("Error caught: %v", err)
 }
 
 func TestProcessFile_FileNotFound(t *testing.T) {
 	// Call ProcessFile with a non-existent file
-	err := ProcessFile("non_existent_file.csv")
+
+	job := job.ImportJob{
+		FilePath: "non_existent_file.csv",
+		MaxRows:  5000,
+	}
+
+	err := ProcessFile(job)
 	assert.Error(t, err)
 	color.Green("Error caught:", err, "\n")
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go-csv-import/internal/logger"
 	"go-csv-import/internal/queue"
-	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -13,13 +12,13 @@ import (
 )
 
 type JobPublisher interface {
-	PublishImportJob(path string) error
+	PublishImportJob(path string, maxRows int) error
 }
 
 type RabbitPublisher struct{}
 
-func (r *RabbitPublisher) PublishImportJob(path string) error {
-	return queue.PublishImportJob(path)
+func (r *RabbitPublisher) PublishImportJob(path string, maxRows int) error {
+	return queue.PublishImportJob(path, maxRows)
 }
 
 // Check if the file has a ".csv" extension
@@ -37,14 +36,14 @@ func handleUpload(publisher JobPublisher) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		file, err := c.FormFile("file")
 		if err != nil {
-			log.Println("Error uploading file:", err)
+			logger.Current.Info("Error uploading file:", "error", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing file"})
 			return
 		}
 
 		err = validateFileType(file.Filename)
 		if err != nil {
-			log.Println("Error validating file type is a .csv:", err)
+			logger.Current.Info("Error validating file type is a .csv:", "error", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -52,27 +51,26 @@ func handleUpload(publisher JobPublisher) gin.HandlerFunc {
 		// Save uploaded file through shared volume
 		dst := filepath.Join("/shared", file.Filename)
 		if err := c.SaveUploadedFile(file, dst); err != nil {
-			log.Println("Error saving file:", err)
+			logger.Current.Info("Error saving file:", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		// Send file path to RabbitMQ
-		if err := publisher.PublishImportJob(dst); err != nil {
-			log.Println("Error publishing job to RabbitMQ:", err)
+		if err := publisher.PublishImportJob(dst, 25000); err != nil {
+			logger.Current.Info("Error publishing job to RabbitMQ:", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
 			return
 		}
 
-		log.Printf("File %s is being processed", file.Filename)
+		logger.Current.Info("File is being processed", "file", file.Filename)
 		c.JSON(http.StatusOK, gin.H{"message": "File is being processed"})
 	}
 }
 
 func main() {
-	if err := logger.InitLogger("logs/api.log"); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-		return
+	if err := logger.InitCurrent("api", false); err != nil {
+		panic(err)
 	}
 
 	r := gin.Default()
@@ -80,6 +78,6 @@ func main() {
 	publisher := &RabbitPublisher{}
 	r.POST("/upload", handleUpload(publisher))
 
-	log.Println("API Server runs on localhost:8080")
+	logger.Current.Info("API Server runs on localhost:8080")
 	r.Run(":8080")
 }
