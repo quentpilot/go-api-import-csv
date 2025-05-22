@@ -6,6 +6,7 @@ import (
 	"go-csv-import/internal/job"
 	"go-csv-import/internal/logger"
 	"log"
+	"time"
 
 	"github.com/streadway/amqp"
 )
@@ -49,30 +50,33 @@ func ConsumeImportJobs() {
 
 	_, ch, err := getChannel()
 	if err != nil {
-		log.Fatal("Connect to RabbitMQ:", err)
+		logger.Current.Error("Connect to RabbitMQ", "error", err)
+		panic(err)
 	}
 
 	msgs, err := ch.Consume("import_queue", "", false, false, false, false, nil)
 	if err != nil {
-		log.Fatal("Error while consuming message:", err)
+		logger.Current.Error("Error while consuming message", "error", err)
+		panic(err)
 	}
 
 	for msg := range msgs {
 		var job job.ImportJob
 		if err := json.Unmarshal(msg.Body, &job); err != nil {
-			logger.Current.Info("Invalid Job format:", "body", msg.Body, "error", err)
+			logger.Current.Error("Invalid Job format:", "body", msg.Body, "error", err)
 			continue
 		}
 
+		start := time.Now()
 		logger.Current.Info("Try to treat file:", "file", job.FilePath)
 		if err := importer.ProcessFile(job); err != nil {
-			logger.Current.Info("Error Treatment:", "error", err)
+			logger.Current.Error("Error Treatment:", "error", err)
 		} else {
-			logger.Current.Info("File has been successful treated:", "file", job.FilePath)
+			logger.Current.Info("File has been successful treated", "file", job.FilePath, "duration", time.Since(start))
 
 			err = job.Remove()
 			if err != nil {
-				logger.Current.Info("Cannot properly remove file '", "file", job.FilePath, "error", err)
+				logger.Current.Error("Cannot properly remove file '", "file", job.FilePath, "error", err)
 			} else {
 				logger.Current.Info("File has been successful deleted:", "file", job.FilePath)
 			}

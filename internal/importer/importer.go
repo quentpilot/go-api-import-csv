@@ -22,7 +22,7 @@ func ProcessFile(file job.ImportJob) error {
 
 	chunk, err := mustChunkFile(file)
 	if err != nil {
-		logger.Current.Info("Error checking chunk file:", "error", err)
+		logger.Current.Error("Error checking chunk file:", "error", err)
 		return fmt.Errorf("error checking chunk file: %w", err)
 	}
 
@@ -30,18 +30,19 @@ func ProcessFile(file job.ImportJob) error {
 	if chunk {
 		files, err := chunkFile(file)
 		if err != nil {
-			logger.Current.Info("Error chunking file:", "file", err)
+			logger.Current.Error("Error chunking file:", "file", err)
 			return fmt.Errorf("error chunking file: %w", err)
 		}
 
 		return processSeveralFiles(files)
 	}
 
+	logger.Current.Info("Processing single file:", "file", file.FilePath)
 	return processSingleFile(files)
 }
 
 func processSingleFile(file job.JobStat) error {
-	logger.Current.Info("Processing single file:", "file", file.FilePath)
+	logger.Current.Info("Processing current file:", "file", file.FilePath)
 
 	start := time.Now()
 
@@ -67,12 +68,12 @@ func processSingleFile(file job.JobStat) error {
 			break
 		}
 		if err != nil {
-			log.Printf("failed to read record %v: %v", record, err)
-			return fmt.Errorf("failed to read record: %w", err)
+			logger.Current.Error("failed to read row", "row", record, "error", err)
+			return fmt.Errorf("failed to read row: %w", err)
 		}
 
 		// Print each line
-		//logger.Current.Info("Read current line:", record)
+		logger.Current.Info("Read current line", "row", record)
 		file.TotalRows++
 	}
 
@@ -111,9 +112,9 @@ func processSeveralFiles(files []job.JobStat) error {
 
 	for _, file := range files {
 		if err := file.Remove(); err != nil {
-			log.Printf("Error removing file %s: %v", file.FilePath, err)
+			logger.Current.Error("Error removing file", "file", file.FilePath, "error", err)
 		} else {
-			log.Printf("File %s removed successfully", file.FilePath)
+			logger.Current.Info("File has been removed successfully", "file", file.FilePath)
 		}
 	}
 
@@ -185,7 +186,7 @@ func chunkFile(file job.ImportJob) ([]job.JobStat, error) {
 
 	// Lire le header une fois
 	if !scanner.Scan() {
-		return nil, fmt.Errorf("fichier vide ou header manquant")
+		return nil, fmt.Errorf("failed to read header for file %s: %w", file.FilePath, scanner.Err())
 	}
 	header := scanner.Text()
 
@@ -242,7 +243,6 @@ func chunkFile(file job.ImportJob) ([]job.JobStat, error) {
 		currentLine++
 	}
 
-	// Nettoyage final
 	if writer != nil {
 		writer.Flush()
 		out.Close()
