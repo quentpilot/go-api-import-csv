@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"go-csv-import/internal/handlers"
 	"go-csv-import/internal/logger"
+	"go-csv-import/internal/middleware"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -134,4 +136,92 @@ func TestHandleUpload_MissingFile(t *testing.T) {
 	// Assert the response
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "Missing file")
+}
+
+func TestHandleUpload_TooLargeFile(t *testing.T) {
+	if err := logger.InitCurrent("api", false); err != nil {
+		panic(err)
+	}
+
+	// Set up Gin router with a limit of 1 MB
+	router := gin.Default()
+	router.POST("/upload",
+		middleware.LimitRequestSize(1<<20),
+		handlers.Upload(mockPublisher{}),
+	)
+
+	// Simulate a file too large
+	var b bytes.Buffer
+	writer := multipart.NewWriter(&b)
+
+	part, err := writer.CreateFormFile("file", "big.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Append 2 MB in the file
+	content := strings.Repeat("A", 2<<20)
+	part.Write([]byte(content))
+
+	assert.Equal(t, int64(2<<20), int64(len(content)))
+
+	writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/upload", &b)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413, got %d", rec.Code)
+	}
+
+	if !strings.Contains(rec.Body.String(), "request body is too large") {
+		t.Errorf("unexpected response body: %s", rec.Body.String())
+	}
+}
+
+func TestHandleUpload_NotTooLargeFile(t *testing.T) {
+	if err := logger.InitCurrent("api", false); err != nil {
+		panic(err)
+	}
+
+	// Set up Gin router with a limit of 2 MB
+	router := gin.Default()
+	router.POST("/upload",
+		middleware.LimitRequestSize(2<<20),
+		handlers.Upload(mockPublisher{}),
+	)
+
+	// Simulate a file smaller than the limit
+	var b bytes.Buffer
+	writer := multipart.NewWriter(&b)
+
+	part, err := writer.CreateFormFile("file", "big.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Append 1 MB to the file
+	content := strings.Repeat("A", 1<<20)
+	part.Write([]byte(content))
+
+	assert.Equal(t, int64(1<<20), int64(len(content)))
+
+	writer.Close()
+
+	req := httptest.NewRequest(http.MethodPost, "/upload", &b)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+
+	if !strings.Contains(rec.Body.String(), "File is being processed") {
+		t.Errorf("unexpected response body: %s", rec.Body.String())
+	}
 }
