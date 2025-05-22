@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"go-csv-import/internal/handlers"
 	"go-csv-import/internal/logger"
 	"io"
 	"mime/multipart"
@@ -27,7 +28,7 @@ func TestHandleUpload_ValidCSVFile(t *testing.T) {
 
 	// Set up Gin router
 	router := gin.Default()
-	router.POST("/upload", handleUpload(mockPublisher{}))
+	router.POST("/upload", handlers.Upload(mockPublisher{}))
 
 	// Create a temporary CSV file
 	tempFile, err := os.CreateTemp("", "testfile-*.csv")
@@ -72,7 +73,7 @@ func TestHandleUpload_InvalidFileType(t *testing.T) {
 
 	// Set up Gin router
 	router := gin.Default()
-	router.POST("/upload", handleUpload(mockPublisher{}))
+	router.POST("/upload", handlers.Upload(mockPublisher{}))
 
 	// Create a temporary non-CSV file
 	tempFile, err := os.CreateTemp("", "testfile-*.txt")
@@ -116,7 +117,7 @@ func TestHandleUpload_MissingFile(t *testing.T) {
 	}
 	// Set up Gin router
 	router := gin.Default()
-	router.POST("/upload", handleUpload(mockPublisher{}))
+	router.POST("/upload", handlers.Upload(mockPublisher{}))
 
 	// Create a new HTTP request without a file
 	body := &bytes.Buffer{}

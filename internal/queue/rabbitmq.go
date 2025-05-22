@@ -11,6 +11,12 @@ import (
 	"github.com/streadway/amqp"
 )
 
+type RabbitPublisher struct{}
+
+func (r *RabbitPublisher) PublishImportJob(path string, maxRows int) error {
+	return PublishImportJob(path, maxRows)
+}
+
 func getChannel() (*amqp.Connection, *amqp.Channel, error) {
 	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
 	if err != nil {
@@ -72,7 +78,7 @@ func ConsumeImportJobs() {
 		if err := importer.ProcessFile(job); err != nil {
 			logger.Current.Error("Error Treatment:", "error", err)
 		} else {
-			logger.Current.Info("File has been successful treated", "file", job.FilePath, "duration", time.Since(start))
+			logger.Current.Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
 
 			err = job.Remove()
 			if err != nil {
