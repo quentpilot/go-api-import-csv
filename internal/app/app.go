@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"go-csv-import/internal/config"
 	"log/slog"
 )
@@ -23,6 +24,8 @@ type AppConfig struct {
 
 func Set(a *Application) {
 	app = a
+
+	printConfig()
 }
 
 func Get() *Application {
@@ -30,6 +33,12 @@ func Get() *Application {
 		panic("Application not initialized. Make sure to call bootstrap.Init() before using the application.")
 	}
 	return app
+}
+
+func printConfig() {
+	Logger().Debug(fmt.Sprintf("%#v", app.Config.Logger))
+	Logger().Debug(fmt.Sprintf("%#v", app.Config.Http))
+	Logger().Debug(fmt.Sprintf("%#v", app.Config.Amqp))
 }
 
 func Logger() *slog.Logger {

@@ -2,36 +2,36 @@ package logger
 
 import (
 	"io"
+	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-var Default *slog.Logger
-var Current *slog.Logger
-
-// InitDefault initialize the default logger
-func InitDefault(useJSON bool) error {
-	l, err := New("root", useJSON)
+// InitDefault initialize the default logger file name "./logs/root.log"
+func InitDefault(level string, useJSON bool) (*slog.Logger, error) {
+	l, err := New("root", level, useJSON)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	Default = l
-	return nil
+
+	return l, nil
 }
 
-func InitCurrent(name string, useJSON bool) error {
-	l, err := New(name, useJSON)
+// InitDefault initialize the wanted logger file name "./logs/<name>.log"
+func InitCurrent(name string, level string, useJSON bool) (*slog.Logger, error) {
+	l, err := New(name, level, useJSON)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	Current = l
-	return nil
+
+	return l, nil
 }
 
 // New returns a dedicated logger with a separate file
-func New(name string, useJSON bool) (*slog.Logger, error) {
+func New(name string, level string, useJSON bool) (*slog.Logger, error) {
+	log.Println("New slog handlers:", name, level)
 	logsDir := "logs"
 	if strings.HasSuffix(os.Args[0], ".test") { // avoid creating logs/ dir in package when test mode
 		logsDir = os.TempDir()
@@ -50,11 +50,31 @@ func New(name string, useJSON bool) (*slog.Logger, error) {
 	output := io.MultiWriter(os.Stdout, f)
 
 	var handler slog.Handler
+	var options slog.HandlerOptions
+
+	options.Level = convLogLevel(level)
+
 	if useJSON {
-		handler = slog.NewJSONHandler(output, nil)
+		handler = slog.NewJSONHandler(output, &options)
 	} else {
-		handler = slog.NewTextHandler(output, nil)
+		handler = slog.NewTextHandler(output, &options)
 	}
 
 	return slog.New(handler), nil
+}
+
+// Converts a string log level to slog.Level integer value
+func convLogLevel(level string) slog.Level {
+	level = strings.ToLower(level)
+
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "warn":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }

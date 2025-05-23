@@ -55,5 +55,5 @@ func (j *JobStat) Remove() error {
 
 // PrintStat returns a formatted string with job statistics
 func (j *JobStat) PrintStat() string {
-	return fmt.Sprintf("File %s has been treated in%6.3f seconds with a total of %d rows", j.FilePath, j.ProcessTime.Seconds(), j.TotalRows)
+	return fmt.Sprintf("File %s has been treated in %0.3f sec with a total of %d rows", j.FilePath, j.ProcessTime.Seconds(), j.TotalRows)
 }

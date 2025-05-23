@@ -17,7 +17,6 @@ func (r *RabbitPublisher) PublishImportJob(path string, maxRows int) error {
 }
 
 func getChannel() (*amqp.Connection, *amqp.Channel, error) {
-	app.Logger().Info("Connecting to RabbitMQ", "dsn", app.AmqpConfig().Dsn)
 	conn, err := amqp.Dial(app.AmqpConfig().Dsn)
 	if err != nil {
 		return nil, nil, err

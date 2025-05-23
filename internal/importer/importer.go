@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go-csv-import/internal/app"
 	"go-csv-import/internal/job"
-	"go-csv-import/internal/logger"
 	"io"
 	"log"
 	"os"
@@ -17,10 +16,6 @@ import (
 )
 
 func ProcessFile(file job.ImportJob) error {
-	if err := logger.InitCurrent("worker", false); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-	}
-
 	chunk, err := mustChunkFile(file)
 	if err != nil {
 		app.Logger().Error("Error checking chunk file:", "error", err)
@@ -60,7 +55,7 @@ func processSingleFile(file job.JobStat) error {
 	if err != nil {
 		return err
 	}
-	app.Logger().Info("CSV Headers:", "headers", headers)
+	app.Logger().Debug("CSV Headers:", "headers", headers)
 
 	file.TotalRows = 0
 	for {
@@ -74,19 +69,19 @@ func processSingleFile(file job.JobStat) error {
 		}
 
 		// Print each line
-		app.Logger().Info("Read current line", "row", record)
+		app.Logger().Debug("Read current line", "row", record)
 		file.TotalRows++
 	}
 
 	file.ProcessTime = time.Since(start)
 
-	log.Print(file.PrintStat())
+	app.Logger().Info(file.PrintStat())
 
 	return nil
 }
 
 func processSeveralFiles(files []job.JobStat) error {
-	log.Printf("Processing several files: %#v", files)
+	app.Logger().Info("Processing several files", "files", files)
 
 	// Define max CPU usage to avoir using all CPU cores
 	maxCPU := runtime.NumCPU()

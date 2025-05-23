@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -9,11 +10,14 @@ import (
 )
 
 type EnvConfig interface {
-	Load()
+	Load() // Load current config type with env vars or fallback values
 }
 
 func LoadEnv() {
-	_ = godotenv.Load()
+	err := godotenv.Load(".env")
+	if err != nil {
+		fmt.Println("Failed to open .env file", err)
+	}
 }
 
 // Get retrieves the value of the environment variable named by the key.

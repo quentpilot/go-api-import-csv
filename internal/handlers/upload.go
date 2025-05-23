@@ -20,14 +20,14 @@ func Upload(publisher JobPublisher) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		file, err := c.FormFile("file")
 		if err != nil {
-			app.Logger().Error("Error uploading file:", "error", err)
+			app.Logger().Error("Error uploading file", "error", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing file"})
 			return
 		}
 
 		err = validation.IsValidCSV(file.Filename)
 		if err != nil {
-			app.Logger().Error("Error validating file type is a .csv:", "error", err)
+			app.Logger().Error("Error validating file type is a .csv", "error", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -35,14 +35,14 @@ func Upload(publisher JobPublisher) gin.HandlerFunc {
 		// Save uploaded file through shared volume
 		dst := filepath.Join("/shared", file.Filename)
 		if err := c.SaveUploadedFile(file, dst); err != nil {
-			app.Logger().Error("Error saving file:", "error", err)
+			app.Logger().Error("Error saving file", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		// Send file path to RabbitMQ
-		if err := publisher.PublishImportJob(dst, 25000); err != nil {
-			app.Logger().Error("Error publishing job to RabbitMQ:", "error", err)
+		if err := publisher.PublishImportJob(dst, app.HttpConfig().FileChunkLimit); err != nil {
+			app.Logger().Error("Error publishing job to RabbitMQ", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
 			return
 		}

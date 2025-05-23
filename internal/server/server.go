@@ -17,7 +17,7 @@ func LoadRoutes(s *gin.Engine, r routes.HttpRouter) {
 
 func Run(s *gin.Engine, addr ...string) {
 	url := "http://localhost" + addr[0]
-	app.Logger().Info("API Server runs on" + url)
+	app.Logger().Info("API Server runs on " + url)
 
 	s.Run(addr...)
 }

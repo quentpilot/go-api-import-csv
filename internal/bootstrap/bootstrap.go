@@ -11,8 +11,9 @@ var appOnce sync.Once
 
 func Init(c app.AppConfig) *app.Application {
 	appOnce.Do(func() {
-		l := iniLogger(c)
 		initEnvConfig(&c)
+
+		l := iniLogger(c)
 
 		a := &app.Application{
 			Logger: l,
@@ -30,11 +31,12 @@ func iniLogger(c app.AppConfig) *slog.Logger {
 		c.LoggerName = "root"
 	}
 
-	if err := logger.InitCurrent(c.LoggerName, false); err != nil {
+	l, err := logger.InitCurrent(c.LoggerName, c.Logger.Level, false)
+	if err != nil {
 		panic(err)
 	}
 
-	return logger.Current
+	return l
 }
 
 func initEnvConfig(c *app.AppConfig) {

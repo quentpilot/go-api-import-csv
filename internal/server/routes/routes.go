@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"go-csv-import/internal/app"
 	"go-csv-import/internal/handlers"
 	"go-csv-import/internal/middleware"
 	"go-csv-import/internal/queue"
@@ -18,5 +19,5 @@ type UploadRouter struct {
 func (r UploadRouter) Load(s *gin.Engine) {
 	publisher := &queue.RabbitPublisher{}
 
-	s.POST("/upload", middleware.LimitRequestSize(10<<20), handlers.Upload(publisher))
+	s.POST("/upload", middleware.LimitRequestSize(app.HttpConfig().MaxContentLength), handlers.Upload(publisher))
 }
