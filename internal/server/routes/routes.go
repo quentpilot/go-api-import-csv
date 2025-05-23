@@ -12,10 +12,10 @@ type HttpRouter interface {
 	Load(s *gin.Engine)
 }
 
-type Route struct {
+type UploadRouter struct {
 }
 
-func (r Route) Load(s *gin.Engine) {
+func (r UploadRouter) Load(s *gin.Engine) {
 	publisher := &queue.RabbitPublisher{}
 
 	s.POST("/upload", middleware.LimitRequestSize(10<<20), handlers.Upload(publisher))

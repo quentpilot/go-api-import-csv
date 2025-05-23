@@ -14,8 +14,7 @@ func main() {
 
 	s := server.Init()
 
-	r := routes.Route{}
-	r.Load(s)
+	server.LoadRoutes(s, routes.UploadRouter{})
 
 	server.Run(s, ":8080")
 }
