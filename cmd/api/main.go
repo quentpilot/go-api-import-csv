@@ -1,6 +1,8 @@
 package main
 
 import (
+	"go-csv-import/internal/app"
+	"go-csv-import/internal/bootstrap"
 	"go-csv-import/internal/handlers"
 	"go-csv-import/internal/logger"
 	"go-csv-import/internal/middleware"
@@ -10,9 +12,9 @@ import (
 )
 
 func main() {
-	if err := logger.InitCurrent("api", false); err != nil {
-		panic(err)
-	}
+	bootstrap.Init(app.Config{
+		LoggerName: "api",
+	})
 
 	r := gin.Default()
 
