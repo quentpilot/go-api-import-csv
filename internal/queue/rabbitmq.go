@@ -5,8 +5,6 @@ import (
 	"go-csv-import/internal/app"
 	"go-csv-import/internal/importer"
 	"go-csv-import/internal/job"
-	"go-csv-import/internal/logger"
-	"log"
 	"time"
 
 	"github.com/streadway/amqp"
@@ -19,7 +17,8 @@ func (r *RabbitPublisher) PublishImportJob(path string, maxRows int) error {
 }
 
 func getChannel() (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial("amqp://guest:guest@rabbitmq:5672/")
+	app.Logger().Info("Connecting to RabbitMQ", "dsn", app.AmqpConfig().Dsn)
+	conn, err := amqp.Dial(app.AmqpConfig().Dsn)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -44,24 +43,20 @@ func PublishImportJob(filepath string, maxRows int) error {
 	job := job.ImportJob{FilePath: filepath, MaxRows: maxRows}
 	body, _ := json.Marshal(job)
 
-	return ch.Publish("", "import_queue", false, false, amqp.Publishing{
+	return ch.Publish("", app.AmqpConfig().Queue, false, false, amqp.Publishing{
 		ContentType: "application/json",
 		Body:        body,
 	})
 }
 
 func ConsumeImportJobs() {
-	if err := logger.InitCurrent("worker", false); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-	}
-
 	_, ch, err := getChannel()
 	if err != nil {
 		app.Logger().Error("Connect to RabbitMQ", "error", err)
 		panic(err)
 	}
 
-	msgs, err := ch.Consume("import_queue", "", false, false, false, false, nil)
+	msgs, err := ch.Consume(app.AmqpConfig().Queue, "", false, false, false, false, nil)
 	if err != nil {
 		app.Logger().Error("Error while consuming message", "error", err)
 		panic(err)

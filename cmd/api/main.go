@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	bootstrap.Init(app.Config{
+	bootstrap.Init(app.AppConfig{
 		LoggerName: "api",
 	})
 
@@ -16,5 +16,5 @@ func main() {
 
 	server.LoadRoutes(s, routes.UploadRouter{})
 
-	server.Run(s, ":8080")
+	server.Run(s, app.HttpConfig().Port)
 }

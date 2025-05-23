@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	bootstrap.Init(app.Config{
+	bootstrap.Init(app.AppConfig{
 		LoggerName: "worker",
 	})
 

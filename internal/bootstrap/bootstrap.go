@@ -9,12 +9,14 @@ import (
 
 var appOnce sync.Once
 
-func Init(c app.Config) *app.Application {
+func Init(c app.AppConfig) *app.Application {
 	appOnce.Do(func() {
 		l := iniLogger(c)
+		initEnvConfig(&c)
 
 		a := &app.Application{
 			Logger: l,
+			Config: &c,
 		}
 
 		app.Set(a)
@@ -23,7 +25,7 @@ func Init(c app.Config) *app.Application {
 	return app.Get()
 }
 
-func iniLogger(c app.Config) *slog.Logger {
+func iniLogger(c app.AppConfig) *slog.Logger {
 	if c.LoggerName == "" {
 		c.LoggerName = "root"
 	}
@@ -33,4 +35,10 @@ func iniLogger(c app.Config) *slog.Logger {
 	}
 
 	return logger.Current
+}
+
+func initEnvConfig(c *app.AppConfig) {
+	c.Logger.Load()
+	c.Http.Load()
+	c.Amqp.Load()
 }
