@@ -1,10 +1,15 @@
 package bootstrap
 
 import (
+	"fmt"
 	"go-csv-import/internal/app"
+	"go-csv-import/internal/config"
 	"go-csv-import/internal/logger"
 	"log/slog"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 )
 
 var appOnce sync.Once
@@ -43,4 +48,33 @@ func initEnvConfig(c *app.AppConfig) {
 	c.Logger.Load()
 	c.Http.Load()
 	c.Amqp.Load()
+}
+
+// WatchForReload listen SIGHUP, reload .env and update app configuration.
+func WatchForReload() {
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGHUP)
+
+		for range sigChan {
+			slog.Info("🔁 Reload configuration (SIGHUP)")
+
+			if err := config.ReloadEnv(); err != nil {
+				slog.Error("❌ Failed to reload .env", "error", err)
+				continue
+			}
+
+			app := app.Get()
+			app.Config.Logger.Load()
+			newLogger, err := logger.InitCurrent(app.Config.LoggerName, app.Config.Logger.Level, false)
+			if err != nil {
+				slog.Error("❌ Failed to reload logger", "error", err)
+			} else {
+				app.Logger = newLogger
+				slog.Info("✅ Configuration reloaded", "level", app.Config.Logger.Level)
+				fmt.Printf("app.Logger ptr: %p\n", app.Logger)
+				fmt.Printf("slog.Default() ptr: %p\n", slog.Default())
+			}
+		}
+	}()
 }

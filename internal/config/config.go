@@ -16,8 +16,12 @@ type EnvConfig interface {
 func LoadEnv() {
 	err := godotenv.Load(".env")
 	if err != nil {
-		fmt.Println("Failed to open .env file", err)
+		fmt.Println("Failed to load .env file", err)
 	}
+}
+
+func ReloadEnv() error {
+	return godotenv.Overload(".env")
 }
 
 // Get retrieves the value of the environment variable named by the key.

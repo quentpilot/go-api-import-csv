@@ -11,6 +11,7 @@ func main() {
 	bootstrap.Init(app.AppConfig{
 		LoggerName: "api",
 	})
+	bootstrap.WatchForReload()
 
 	s := server.Init()
 

@@ -37,6 +37,7 @@ func ProcessFile(file job.ImportJob) error {
 	return processSingleFile(files)
 }
 
+// Parse CSV file
 func processSingleFile(file job.JobStat) error {
 	app.Logger().Info("Processing current file:", "file", file.FilePath)
 
@@ -90,12 +91,18 @@ func processSeveralFiles(files []job.JobStat) error {
 	}
 	runtime.GOMAXPROCS(maxCPU)
 
+	sem := make(chan struct{}, maxCPU)
+
 	var wg sync.WaitGroup
 
 	for _, file := range files {
 		wg.Add(1)
 		go func(f job.JobStat) {
 			defer wg.Done()
+
+			sem <- struct{}{}
+
+			defer func() { sem <- struct{}{} }()
 
 			if err := processSingleFile(f); err != nil {
 				log.Printf("Error processing file %s: %v", f.FilePath, err)

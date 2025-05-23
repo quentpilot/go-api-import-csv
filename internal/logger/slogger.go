@@ -60,7 +60,9 @@ func New(name string, level string, useJSON bool) (*slog.Logger, error) {
 		handler = slog.NewTextHandler(output, &options)
 	}
 
-	return slog.New(handler), nil
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
+	return logger, nil
 }
 
 // Converts a string log level to slog.Level integer value
