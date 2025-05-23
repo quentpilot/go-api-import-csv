@@ -22,7 +22,7 @@ func Set(a *Application) {
 
 func Get() *Application {
 	if app == nil {
-		panic("application not initialized")
+		panic("application not initialized. Make sure to call bootstrap.Init() before using the application.")
 	}
 	return app
 }

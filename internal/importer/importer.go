@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
+	"go-csv-import/internal/app"
 	"go-csv-import/internal/job"
 	"go-csv-import/internal/logger"
 	"io"
@@ -22,7 +23,7 @@ func ProcessFile(file job.ImportJob) error {
 
 	chunk, err := mustChunkFile(file)
 	if err != nil {
-		logger.Current.Error("Error checking chunk file:", "error", err)
+		app.Logger().Error("Error checking chunk file:", "error", err)
 		return fmt.Errorf("error checking chunk file: %w", err)
 	}
 
@@ -30,19 +31,19 @@ func ProcessFile(file job.ImportJob) error {
 	if chunk {
 		files, err := chunkFile(file)
 		if err != nil {
-			logger.Current.Error("Error chunking file:", "file", err)
+			app.Logger().Error("Error chunking file:", "file", err)
 			return fmt.Errorf("error chunking file: %w", err)
 		}
 
 		return processSeveralFiles(files)
 	}
 
-	logger.Current.Info("Processing single file:", "file", file.FilePath)
+	app.Logger().Info("Processing single file:", "file", file.FilePath)
 	return processSingleFile(files)
 }
 
 func processSingleFile(file job.JobStat) error {
-	logger.Current.Info("Processing current file:", "file", file.FilePath)
+	app.Logger().Info("Processing current file:", "file", file.FilePath)
 
 	start := time.Now()
 
@@ -59,7 +60,7 @@ func processSingleFile(file job.JobStat) error {
 	if err != nil {
 		return err
 	}
-	logger.Current.Info("CSV Headers:", "headers", headers)
+	app.Logger().Info("CSV Headers:", "headers", headers)
 
 	file.TotalRows = 0
 	for {
@@ -68,12 +69,12 @@ func processSingleFile(file job.JobStat) error {
 			break
 		}
 		if err != nil {
-			logger.Current.Error("failed to read row", "row", record, "error", err)
+			app.Logger().Error("failed to read row", "row", record, "error", err)
 			return fmt.Errorf("failed to read row: %w", err)
 		}
 
 		// Print each line
-		logger.Current.Info("Read current line", "row", record)
+		app.Logger().Info("Read current line", "row", record)
 		file.TotalRows++
 	}
 
@@ -108,13 +109,13 @@ func processSeveralFiles(files []job.JobStat) error {
 		}(file)
 	}
 	wg.Wait()
-	logger.Current.Info("All files processed")
+	app.Logger().Info("All files processed")
 
 	for _, file := range files {
 		if err := file.Remove(); err != nil {
-			logger.Current.Error("Error removing file", "file", file.FilePath, "error", err)
+			app.Logger().Error("Error removing file", "file", file.FilePath, "error", err)
 		} else {
-			logger.Current.Info("File has been removed successfully", "file", file.FilePath)
+			app.Logger().Info("File has been removed successfully", "file", file.FilePath)
 		}
 	}
 

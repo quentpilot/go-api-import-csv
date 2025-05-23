@@ -2,6 +2,7 @@ package queue
 
 import (
 	"encoding/json"
+	"go-csv-import/internal/app"
 	"go-csv-import/internal/importer"
 	"go-csv-import/internal/job"
 	"go-csv-import/internal/logger"
@@ -56,39 +57,39 @@ func ConsumeImportJobs() {
 
 	_, ch, err := getChannel()
 	if err != nil {
-		logger.Current.Error("Connect to RabbitMQ", "error", err)
+		app.Logger().Error("Connect to RabbitMQ", "error", err)
 		panic(err)
 	}
 
 	msgs, err := ch.Consume("import_queue", "", false, false, false, false, nil)
 	if err != nil {
-		logger.Current.Error("Error while consuming message", "error", err)
+		app.Logger().Error("Error while consuming message", "error", err)
 		panic(err)
 	}
 
 	for msg := range msgs {
 		var job job.ImportJob
 		if err := json.Unmarshal(msg.Body, &job); err != nil {
-			logger.Current.Error("Invalid Job format:", "body", msg.Body, "error", err)
+			app.Logger().Error("Invalid Job format:", "body", msg.Body, "error", err)
 			continue
 		}
 
 		start := time.Now()
-		logger.Current.Info("Try to treat file:", "file", job.FilePath)
+		app.Logger().Info("Try to treat file:", "file", job.FilePath)
 		if err := importer.ProcessFile(job); err != nil {
-			logger.Current.Error("Error Treatment:", "error", err)
+			app.Logger().Error("Error Treatment:", "error", err)
 		} else {
-			logger.Current.Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
+			app.Logger().Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
 
 			err = job.Remove()
 			if err != nil {
-				logger.Current.Error("Cannot properly remove file '", "file", job.FilePath, "error", err)
+				app.Logger().Error("Cannot properly remove file '", "file", job.FilePath, "error", err)
 			} else {
-				logger.Current.Info("File has been successful deleted:", "file", job.FilePath)
+				app.Logger().Info("File has been successful deleted:", "file", job.FilePath)
 			}
 		}
 
 		msg.Ack(false)
-		logger.Current.Info("Message acknowledged")
+		app.Logger().Info("Message acknowledged")
 	}
 }
