@@ -2,8 +2,9 @@ package main
 
 import (
 	"bytes"
+	"go-csv-import/internal/app"
+	"go-csv-import/internal/bootstrap"
 	"go-csv-import/internal/handlers"
-	"go-csv-import/internal/logger"
 	"go-csv-import/internal/middleware"
 	"io"
 	"mime/multipart"
@@ -23,10 +24,12 @@ func (m mockPublisher) PublishImportJob(path string, maxRows int) error {
 	return nil
 }
 
+func boot() {
+	bootstrap.Init(app.AppConfig{LoggerName: "api"})
+}
+
 func TestHandleUpload_ValidCSVFile(t *testing.T) {
-	if err := logger.InitCurrent("api", false); err != nil {
-		panic(err)
-	}
+	boot()
 
 	// Set up Gin router
 	router := gin.Default()
@@ -69,9 +72,6 @@ func TestHandleUpload_ValidCSVFile(t *testing.T) {
 }
 
 func TestHandleUpload_InvalidFileType(t *testing.T) {
-	if err := logger.InitCurrent("api", false); err != nil {
-		panic(err)
-	}
 
 	// Set up Gin router
 	router := gin.Default()
@@ -114,9 +114,6 @@ func TestHandleUpload_InvalidFileType(t *testing.T) {
 }
 
 func TestHandleUpload_MissingFile(t *testing.T) {
-	if err := logger.InitCurrent("api", false); err != nil {
-		panic(err)
-	}
 	// Set up Gin router
 	router := gin.Default()
 	router.POST("/upload", handlers.Upload(mockPublisher{}))
@@ -139,10 +136,6 @@ func TestHandleUpload_MissingFile(t *testing.T) {
 }
 
 func TestHandleUpload_TooLargeFile(t *testing.T) {
-	if err := logger.InitCurrent("api", false); err != nil {
-		panic(err)
-	}
-
 	// Set up Gin router with a limit of 1 MB
 	router := gin.Default()
 	router.POST("/upload",
@@ -183,10 +176,6 @@ func TestHandleUpload_TooLargeFile(t *testing.T) {
 }
 
 func TestHandleUpload_NotTooLargeFile(t *testing.T) {
-	if err := logger.InitCurrent("api", false); err != nil {
-		panic(err)
-	}
-
 	// Set up Gin router with a limit of 2 MB
 	router := gin.Default()
 	router.POST("/upload",

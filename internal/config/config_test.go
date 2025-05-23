@@ -13,7 +13,7 @@ func TestFallback(t *testing.T) {
 
 	ca := &ApmqConfig{}
 	ca.Load()
-	assert.Equal(t, "amqp://guest:guest@localhost:5672/", ca.Dsn)
+	assert.Equal(t, "amqp://guest:guest@rabbitmq:5672/", ca.Dsn)
 
 	cl := &LoggerConfig{}
 	cl.Load()

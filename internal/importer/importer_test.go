@@ -1,6 +1,8 @@
 package importer
 
 import (
+	"go-csv-import/internal/app"
+	"go-csv-import/internal/bootstrap"
 	"go-csv-import/internal/job"
 	"os"
 	"testing"
@@ -9,7 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func boot() {
+	bootstrap.Init(app.AppConfig{LoggerName: "worker"})
+}
+
 func TestProcessFile_ValidCSV(t *testing.T) {
+	boot()
+
 	// Create a temporary CSV file
 	tempFile, err := os.CreateTemp("", "testfile-*.csv")
 	assert.NoError(t, err)
