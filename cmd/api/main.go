@@ -3,12 +3,8 @@ package main
 import (
 	"go-csv-import/internal/app"
 	"go-csv-import/internal/bootstrap"
-	"go-csv-import/internal/handlers"
-	"go-csv-import/internal/logger"
-	"go-csv-import/internal/middleware"
-	"go-csv-import/internal/queue"
-
-	"github.com/gin-gonic/gin"
+	"go-csv-import/internal/server"
+	"go-csv-import/internal/server/routes"
 )
 
 func main() {
@@ -16,11 +12,10 @@ func main() {
 		LoggerName: "api",
 	})
 
-	r := gin.Default()
+	s := server.Init()
 
-	publisher := &queue.RabbitPublisher{}
-	r.POST("/upload", middleware.LimitRequestSize(10<<20), handlers.Upload(publisher))
+	r := routes.Route{}
+	r.Load(s)
 
-	logger.Current.Info("API Server runs on localhost:8080")
-	r.Run(":8080")
+	server.Run(s, ":8080")
 }
