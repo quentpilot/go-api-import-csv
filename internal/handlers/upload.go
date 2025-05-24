@@ -45,7 +45,7 @@ func Upload(publisher *service.ImportFileQueue) gin.HandlerFunc {
 		// Send file path to RabbitMQ
 		job := &job.ImportJob{
 			FilePath: dst,
-			MaxRows:  publisher.HttpConfig.FileChunkLimit,
+			MaxRows:  int(publisher.HttpConfig.FileChunkLimit),
 		}
 
 		if err := publisher.Publish(job); err != nil {

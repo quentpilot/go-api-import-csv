@@ -74,6 +74,21 @@ func GetInt(key string, fallback int64) int64 {
 	return i
 }
 
+// GetInt retrieves the value of the environment variable named by the key.
+func GetUint(key string, fallback uint64) uint64 {
+	val := os.Getenv(key)
+	if val == "" {
+		return fallback
+	}
+
+	i, err := strconv.ParseUint(val, 10, 64)
+	if err != nil {
+		log.Printf("Bad unsigned integer value for key %s: %v", key, err)
+		return fallback
+	}
+	return i
+}
+
 // GetFloat retrieves the value of the environment variable named by the key.
 func GetFloat(key string, fallback float64) float64 {
 	val := os.Getenv(key)

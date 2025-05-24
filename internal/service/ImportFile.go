@@ -28,6 +28,31 @@ type ImportFile struct {
 	Repository repository.ContactRepository
 }
 
+type BatchHandler interface {
+	Reset()  // Resets the current batch infos
+	Append() // Adds item to the current batch
+}
+
+// Batch represents the current batch of data to insert
+type Batch struct {
+	Contacts []*model.Contact // Current rows ready to be batch inserted
+	Length   uint             // Number of Contacts rows
+}
+
+func (b *Batch) Reset() {
+	b.Contacts = []*model.Contact{}
+	b.Length = 0
+}
+
+func (b *Batch) Append(c *model.Contact) {
+	b.Contacts = append(b.Contacts, c)
+	b.Length++
+}
+
+func (b *Batch) IsReached(maxBatch uint) bool {
+	return b.Length == maxBatch
+}
+
 func NewImportFile(h *config.HttpConfig, d *config.DbConfig) *ImportFile {
 	return &ImportFile{
 		HttpConfig: h,
@@ -36,14 +61,17 @@ func NewImportFile(h *config.HttpConfig, d *config.DbConfig) *ImportFile {
 	}
 }
 
+func (i *ImportFile) reset() {
+	i.Repository.Truncate()
+}
+
 func (i *ImportFile) Import(file *job.ImportJob) error {
+	i.reset()
 	chunk, err := i.mustChunkFile(file)
 	if err != nil {
 		slog.Error("Error checking chunk file:", "error", err)
 		return fmt.Errorf("error checking chunk file: %w", err)
 	}
-
-	i.Repository.Truncate()
 
 	files := &job.JobStat{FilePath: file.FilePath, TotalRows: 0, ProcessTime: 0}
 	if chunk {
@@ -82,6 +110,8 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 	}
 	slog.Debug("CSV Headers:", "headers", headers)
 
+	batch := &Batch{}
+
 	file.TotalRows = 0
 	for {
 		record, err := reader.Read()
@@ -94,15 +124,28 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 		}
 
 		// Print each line
-		slog.Debug("Read current line", "row", record)
-		contact, err := i.insert(headers, record)
+		//slog.Debug("Read current line", "row", record)
+
+		// Batch insert contacts
+		br := i.insertBatch(batch, headers, record, false)
+		if br != nil {
+			slog.Error("Error while insert batch contacts", "error", br, "force", false)
+		}
+
+		/* contact, err := i.insert(headers, record)
 		if err != nil {
 			slog.Error("Failed to insert current contact", "error", err.Error())
 		} else {
 			slog.Debug("New contact inserted", "contact", fmt.Sprintf("%#v", contact))
-		}
+		} */
 
 		file.TotalRows++
+	}
+
+	// Batch insert contacts
+	br := i.insertBatch(batch, headers, []string{}, true)
+	if br != nil {
+		slog.Error("Error while insert batch contacts", "error", br, "force", true)
 	}
 
 	file.ProcessTime = time.Since(start)
@@ -318,4 +361,25 @@ func (i *ImportFile) insert(header []string, row []string) (*model.Contact, erro
 	err = i.Repository.Insert(c)
 
 	return c, err
+}
+
+func (i *ImportFile) insertBatch(batch *Batch, header []string, row []string, force bool) error {
+	var err error
+	if len(row) > 0 {
+		c, err := i.createContactFromRow(header, row)
+		if err != nil {
+			return err
+		}
+		slog.Debug("Model created", "contact", fmt.Sprintf("%#v", c))
+
+		batch.Append(c)
+	}
+
+	if batch.IsReached(i.HttpConfig.BatchInsert) || (force && batch.Length > 0) {
+		slog.Info("Batch insert contacts", "total", batch.Length, "force", force)
+		err = i.Repository.InsertBatch(batch.Contacts)
+		batch.Reset()
+	}
+
+	return err
 }

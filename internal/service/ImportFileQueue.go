@@ -47,9 +47,9 @@ func (q *ImportFileQueue) Publish(job *job.ImportJob) error {
 }
 
 func (q *ImportFileQueue) Consume() {
-	msgs := q.Queue.Consume(q.AmqpConfig.Queue, false)
+	//msgs := q.Queue.Consume(q.AmqpConfig.Queue, true)
 
-	for msg := range msgs {
+	for msg := range q.Queue.Consume(q.AmqpConfig.Queue, true) {
 		var job job.ImportJob
 		if err := json.Unmarshal(msg.Body, &job); err != nil {
 			slog.Error("Invalid Job format:", "body", msg.Body, "error", err)
@@ -71,7 +71,7 @@ func (q *ImportFileQueue) Consume() {
 			}
 		}
 
-		msg.Ack(false)
+		//msg.Ack(false)
 		slog.Info("Message acknowledged")
 	}
 }
