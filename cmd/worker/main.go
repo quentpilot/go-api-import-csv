@@ -9,6 +9,7 @@ import (
 func main() {
 	bootstrap.Init(app.AppConfig{
 		LoggerName: "worker",
+		UseDb:      true,
 	})
 	bootstrap.WatchForReload()
 

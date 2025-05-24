@@ -21,6 +21,8 @@ type AppConfig struct {
 	Logger     config.LoggerConfig // Logger configuration
 	Http       config.HttpConfig   // HTTP server configuration
 	Amqp       config.ApmqConfig   // AMQP server configuration
+	Db         config.DbConfig     // Database server configuration
+	UseDb      bool                // Whether to open a database connection (default: false)
 }
 
 func Set(a *Application) {
@@ -42,6 +44,8 @@ func (a *Application) PrintConfig() {
 	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Logger))
 	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Http))
 	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Amqp))
+	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Db))
+	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.UseDb))
 }
 
 func (a *Application) Logger() *slog.Logger {
@@ -66,4 +70,8 @@ func HttpConfig() config.HttpConfig {
 
 func AmqpConfig() config.ApmqConfig {
 	return Get().Config.Amqp
+}
+
+func DbConfig() config.DbConfig {
+	return Get().Config.Db
 }

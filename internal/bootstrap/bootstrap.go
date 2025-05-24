@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"go-csv-import/internal/app"
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/db"
 	"go-csv-import/internal/logger"
 	"log/slog"
 	"os"
@@ -16,7 +17,6 @@ var appOnce sync.Once
 func Init(c app.AppConfig) *app.Application {
 	appOnce.Do(func() {
 		initEnvConfig(&c)
-
 		l := iniLogger(c)
 
 		a := &app.Application{
@@ -24,13 +24,15 @@ func Init(c app.AppConfig) *app.Application {
 		}
 
 		a.SetLogger(l)
-
 		app.Set(a)
+
+		initDatabase(&c)
 	})
 
 	return app.Get()
 }
 
+// Creates a new slogger
 func iniLogger(c app.AppConfig) *slog.Logger {
 	if c.LoggerName == "" {
 		c.LoggerName = "root"
@@ -44,10 +46,23 @@ func iniLogger(c app.AppConfig) *slog.Logger {
 	return l
 }
 
+// Loads all environment variable to through "config" package
 func initEnvConfig(c *app.AppConfig) {
 	c.Logger.Load()
 	c.Http.Load()
 	c.Amqp.Load()
+	c.Db.Load()
+}
+
+// Opens a new database connection
+func initDatabase(c *app.AppConfig) {
+	if c.UseDb {
+		if err := db.Connect(); err != nil {
+			app.Log().Error("Failed to connect to database", "error", err)
+			panic(err)
+		}
+		db.AutoMigrate()
+	}
 }
 
 // WatchForReload listen SIGHUP, reload .env and update app configuration.
