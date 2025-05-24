@@ -27,7 +27,7 @@ func getChannel() (*amqp.Connection, *amqp.Channel, error) {
 		return nil, nil, err
 	}
 
-	_, err = ch.QueueDeclare("import_queue", true, false, false, false, nil)
+	_, err = ch.QueueDeclare(app.AmqpConfig().Queue, true, false, false, false, nil)
 	return conn, ch, err
 }
 
