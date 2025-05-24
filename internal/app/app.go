@@ -26,7 +26,7 @@ type AppConfig struct {
 func Set(a *Application) {
 	application = a
 
-	a.printConfig()
+	a.PrintConfig()
 }
 
 func Get() *Application {
@@ -37,7 +37,7 @@ func Get() *Application {
 	return application
 }
 
-func (a *Application) printConfig() {
+func (a *Application) PrintConfig() {
 	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.LoggerName))
 	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Logger))
 	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Http))

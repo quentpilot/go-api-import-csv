@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"fmt"
 	"go-csv-import/internal/app"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/logger"
@@ -58,22 +57,25 @@ func WatchForReload() {
 		signal.Notify(sigChan, syscall.SIGHUP)
 
 		for range sigChan {
-			slog.Info("🔁 Reload configuration (SIGHUP)")
+			app.Log().Info("Reload configuration (SIGHUP)")
 
 			if err := config.ReloadEnv(); err != nil {
-				slog.Error("❌ Failed to reload .env", "error", err)
+				slog.Error("Failed to reload .env", "error", err)
 				continue
 			}
 
+			app.Config().Http.Load()
 			app.Config().Logger.Load()
+
 			newLogger, err := logger.InitCurrent(app.Config().LoggerName, app.Config().Logger.Level, false)
 			if err != nil {
-				slog.Error("❌ Failed to reload logger", "error", err)
+				slog.Error("Failed to reload logger", "error", err)
 			} else {
 				app.Get().SetLogger(newLogger)
-				slog.Info("✅ Configuration reloaded", "level", app.Config().Logger.Level)
-				fmt.Printf("app.Logger ptr: %p\n", app.Get().Logger())
-				fmt.Printf("slog.Default() ptr: %p\n", slog.Default())
+				app.Log().Info("Configuration reloaded", "level", app.Config().Logger.Level)
+				app.Get().PrintConfig()
+				//fmt.Printf("app.Logger ptr: %p\n", app.Get().Logger())
+				//fmt.Printf("slog.Default() ptr: %p\n", slog.Default())
 			}
 		}
 	}()

@@ -1,5 +1,7 @@
 # Project name
 PROJECT_NAME := go-api-import-csv
+SERVICE_NAME_API := api
+SERVICE_NAME_WORKER := worker
 
 # Run API in development mode
 dev-api:
@@ -20,6 +22,26 @@ build:
 # Build and run all services
 run:
 	docker-compose up --build
+
+start-api:
+	docker-compose up -d $(SERVICE_NAME_API)
+
+start-worker:
+	docker-compose up -d $(SERVICE_NAME_WORKER)
+
+stop-api:
+	docker-compose stop $(SERVICE_NAME_API)
+
+stop-worker:
+	docker-compose stop $(SERVICE_NAME_WORKER)
+
+restart-api: stop-api start-api
+
+restart-worker: stop-worker start-worker
+
+start: start-api start-worker
+
+stop: stop-api stop-worker
 
 # Clean docker
 clean:
@@ -60,4 +82,14 @@ run-api:
 run-worker:
 	go run ./cmd/worker
 
-.PHONY: dev dev-api dev-worker build build-all build-api build-worker clean test test-local lint fmt run-api run-worker
+reload-conf-api:
+	@echo "Send SIGHUP to service $(SERVICE_NAME_API)"; \
+	docker-compose exec $(SERVICE_NAME_API) pkill -SIGHUP $(SERVICE_NAME_API)
+
+reload-conf-worker:
+	@echo "Send SIGHUP to service $(SERVICE_NAME_WORKER)"; \
+	docker-compose exec $(SERVICE_NAME_WORKER) pkill -SIGHUP $(SERVICE_NAME_WORKER)
+
+reload: reload-conf-api reload-conf-worker
+
+.PHONY: dev dev-api dev-worker build build-all build-api build-worker clean test test-local lint fmt run-api run-worker reload-conf-api reload-conf-worker reload
