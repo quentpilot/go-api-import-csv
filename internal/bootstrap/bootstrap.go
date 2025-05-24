@@ -21,9 +21,10 @@ func Init(c app.AppConfig) *app.Application {
 		l := iniLogger(c)
 
 		a := &app.Application{
-			Logger: l,
 			Config: &c,
 		}
+
+		a.SetLogger(l)
 
 		app.Set(a)
 	})
@@ -64,15 +65,14 @@ func WatchForReload() {
 				continue
 			}
 
-			app := app.Get()
-			app.Config.Logger.Load()
-			newLogger, err := logger.InitCurrent(app.Config.LoggerName, app.Config.Logger.Level, false)
+			app.Config().Logger.Load()
+			newLogger, err := logger.InitCurrent(app.Config().LoggerName, app.Config().Logger.Level, false)
 			if err != nil {
 				slog.Error("❌ Failed to reload logger", "error", err)
 			} else {
-				app.Logger = newLogger
-				slog.Info("✅ Configuration reloaded", "level", app.Config.Logger.Level)
-				fmt.Printf("app.Logger ptr: %p\n", app.Logger)
+				app.Get().SetLogger(newLogger)
+				slog.Info("✅ Configuration reloaded", "level", app.Config().Logger.Level)
+				fmt.Printf("app.Logger ptr: %p\n", app.Get().Logger())
 				fmt.Printf("slog.Default() ptr: %p\n", slog.Default())
 			}
 		}

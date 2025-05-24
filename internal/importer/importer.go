@@ -18,7 +18,7 @@ import (
 func ProcessFile(file job.ImportJob) error {
 	chunk, err := mustChunkFile(file)
 	if err != nil {
-		app.Logger().Error("Error checking chunk file:", "error", err)
+		app.Log().Error("Error checking chunk file:", "error", err)
 		return fmt.Errorf("error checking chunk file: %w", err)
 	}
 
@@ -26,20 +26,20 @@ func ProcessFile(file job.ImportJob) error {
 	if chunk {
 		files, err := chunkFile(file)
 		if err != nil {
-			app.Logger().Error("Error chunking file:", "file", err)
+			app.Log().Error("Error chunking file:", "file", err)
 			return fmt.Errorf("error chunking file: %w", err)
 		}
 
 		return processSeveralFiles(files)
 	}
 
-	app.Logger().Info("Processing single file:", "file", file.FilePath)
+	app.Log().Info("Processing single file:", "file", file.FilePath)
 	return processSingleFile(files)
 }
 
 // Parse CSV file
 func processSingleFile(file job.JobStat) error {
-	app.Logger().Info("Processing current file:", "file", file.FilePath)
+	app.Log().Info("Processing current file:", "file", file.FilePath)
 
 	start := time.Now()
 
@@ -56,7 +56,7 @@ func processSingleFile(file job.JobStat) error {
 	if err != nil {
 		return err
 	}
-	app.Logger().Debug("CSV Headers:", "headers", headers)
+	app.Log().Debug("CSV Headers:", "headers", headers)
 
 	file.TotalRows = 0
 	for {
@@ -65,24 +65,24 @@ func processSingleFile(file job.JobStat) error {
 			break
 		}
 		if err != nil {
-			app.Logger().Error("failed to read row", "row", record, "error", err)
+			app.Log().Error("failed to read row", "row", record, "error", err)
 			return fmt.Errorf("failed to read row: %w", err)
 		}
 
 		// Print each line
-		app.Logger().Debug("Read current line", "row", record)
+		app.Log().Debug("Read current line", "row", record)
 		file.TotalRows++
 	}
 
 	file.ProcessTime = time.Since(start)
 
-	app.Logger().Info(file.PrintStat())
+	app.Log().Info(file.PrintStat())
 
 	return nil
 }
 
 func processSeveralFiles(files []job.JobStat) error {
-	app.Logger().Info("Processing several files", "files", files)
+	app.Log().Info("Processing several files", "files", files)
 
 	// Define max CPU usage to avoir using all CPU cores
 	maxCPU := runtime.NumCPU()
@@ -111,13 +111,13 @@ func processSeveralFiles(files []job.JobStat) error {
 		}(file)
 	}
 	wg.Wait()
-	app.Logger().Info("All files processed")
+	app.Log().Info("All files processed")
 
 	for _, file := range files {
 		if err := file.Remove(); err != nil {
-			app.Logger().Error("Error removing file", "file", file.FilePath, "error", err)
+			app.Log().Error("Error removing file", "file", file.FilePath, "error", err)
 		} else {
-			app.Logger().Info("File has been removed successfully", "file", file.FilePath)
+			app.Log().Info("File has been removed successfully", "file", file.FilePath)
 		}
 	}
 

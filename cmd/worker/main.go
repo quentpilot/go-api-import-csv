@@ -12,6 +12,7 @@ func main() {
 	})
 	bootstrap.WatchForReload()
 
-	app.Logger().Info("Worker is listening...")
+	app.Log().Info("Worker is listening...")
 	queue.ConsumeImportJobs()
+	app.Log().Info("...Shutdown Worker")
 }

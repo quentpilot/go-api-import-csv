@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"go-csv-import/internal/config"
 	"log/slog"
+	"sync/atomic"
 )
 
-var app *Application
+var application *Application
 
 // Application holds the application modules like app env config, logger, etc.
 type Application struct {
-	Logger *slog.Logger
+	logger atomic.Pointer[slog.Logger]
 	Config *AppConfig
 }
 
@@ -23,26 +24,36 @@ type AppConfig struct {
 }
 
 func Set(a *Application) {
-	app = a
+	application = a
 
-	printConfig()
+	a.printConfig()
 }
 
 func Get() *Application {
-	if app == nil {
+	if application == nil {
 		panic("Application not initialized. Make sure to call bootstrap.Init() before using the application.")
 	}
-	return app
+
+	return application
 }
 
-func printConfig() {
-	Logger().Debug(fmt.Sprintf("%#v", app.Config.Logger))
-	Logger().Debug(fmt.Sprintf("%#v", app.Config.Http))
-	Logger().Debug(fmt.Sprintf("%#v", app.Config.Amqp))
+func (a *Application) printConfig() {
+	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.LoggerName))
+	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Logger))
+	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Http))
+	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Amqp))
 }
 
-func Logger() *slog.Logger {
-	return Get().Logger
+func (a *Application) Logger() *slog.Logger {
+	return a.logger.Load()
+}
+
+func (a *Application) SetLogger(l *slog.Logger) {
+	a.logger.Store(l)
+}
+
+func Log() *slog.Logger {
+	return Get().Logger()
 }
 
 func Config() *AppConfig {

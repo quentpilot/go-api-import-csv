@@ -51,39 +51,39 @@ func PublishImportJob(filepath string, maxRows int) error {
 func ConsumeImportJobs() {
 	_, ch, err := getChannel()
 	if err != nil {
-		app.Logger().Error("Connect to RabbitMQ", "error", err)
+		app.Log().Error("Connect to RabbitMQ", "error", err)
 		panic(err)
 	}
 
 	msgs, err := ch.Consume(app.AmqpConfig().Queue, "", false, false, false, false, nil)
 	if err != nil {
-		app.Logger().Error("Error while consuming message", "error", err)
+		app.Log().Error("Error while consuming message", "error", err)
 		panic(err)
 	}
 
 	for msg := range msgs {
 		var job job.ImportJob
 		if err := json.Unmarshal(msg.Body, &job); err != nil {
-			app.Logger().Error("Invalid Job format:", "body", msg.Body, "error", err)
+			app.Log().Error("Invalid Job format:", "body", msg.Body, "error", err)
 			continue
 		}
 
 		start := time.Now()
-		app.Logger().Info("Try to treat file:", "file", job.FilePath)
+		app.Log().Info("Try to treat file:", "file", job.FilePath)
 		if err := importer.ProcessFile(job); err != nil {
-			app.Logger().Error("Error Treatment:", "error", err)
+			app.Log().Error("Error Treatment:", "error", err)
 		} else {
-			app.Logger().Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
+			app.Log().Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
 
 			err = job.Remove()
 			if err != nil {
-				app.Logger().Error("Cannot properly remove file '", "file", job.FilePath, "error", err)
+				app.Log().Error("Cannot properly remove file '", "file", job.FilePath, "error", err)
 			} else {
-				app.Logger().Info("File has been successful deleted:", "file", job.FilePath)
+				app.Log().Info("File has been successful deleted:", "file", job.FilePath)
 			}
 		}
 
 		msg.Ack(false)
-		app.Logger().Info("Message acknowledged")
+		app.Log().Info("Message acknowledged")
 	}
 }
