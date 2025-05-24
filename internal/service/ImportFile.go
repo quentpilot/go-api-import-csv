@@ -3,9 +3,12 @@ package service
 import (
 	"bufio"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/job"
+	"go-csv-import/internal/model"
+	"go-csv-import/internal/repository"
 	"io"
 	"log/slog"
 	"os"
@@ -22,12 +25,14 @@ type ImportFileService interface {
 type ImportFile struct {
 	HttpConfig *config.HttpConfig
 	DbConfig   *config.DbConfig
+	Repository repository.ContactRepository
 }
 
 func NewImportFile(h *config.HttpConfig, d *config.DbConfig) *ImportFile {
 	return &ImportFile{
 		HttpConfig: h,
 		DbConfig:   d,
+		Repository: repository.NewContactRepository(),
 	}
 }
 
@@ -37,6 +42,8 @@ func (i *ImportFile) Import(file *job.ImportJob) error {
 		slog.Error("Error checking chunk file:", "error", err)
 		return fmt.Errorf("error checking chunk file: %w", err)
 	}
+
+	i.Repository.Truncate()
 
 	files := &job.JobStat{FilePath: file.FilePath, TotalRows: 0, ProcessTime: 0}
 	if chunk {
@@ -66,6 +73,7 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 	defer f.Close()
 
 	reader := csv.NewReader(f)
+	reader.Comma = ';'
 
 	// Skip header
 	headers, err := reader.Read()
@@ -87,6 +95,13 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 
 		// Print each line
 		slog.Debug("Read current line", "row", record)
+		contact, err := i.insert(headers, record)
+		if err != nil {
+			slog.Error("Failed to insert current contact", "error", err.Error())
+		} else {
+			slog.Debug("New contact inserted", "contact", fmt.Sprintf("%#v", contact))
+		}
+
 		file.TotalRows++
 	}
 
@@ -253,4 +268,54 @@ func (i *ImportFile) chunkFile(file *job.ImportJob) ([]job.JobStat, error) {
 	}
 
 	return chunkFiles, nil
+}
+
+// Combines header as key with row as value
+func (i *ImportFile) combine(header []string, row []string) (map[string]string, error) {
+	if len(header) != len(row) {
+		return nil, errors.New("header and row slices mismatch")
+	}
+
+	r := make(map[string]string, len(header))
+	for i, k := range header {
+		r[k] = row[i]
+	}
+
+	return r, nil
+}
+
+func (i *ImportFile) createContactFromRow(header []string, row []string) (*model.Contact, error) {
+	r, err := i.combine(header, row)
+	if err != nil {
+		return &model.Contact{}, err
+	}
+	slog.Debug("Combine row result", "combine", fmt.Sprintf("%#v", r))
+
+	required := []string{"Phone", "Firstname", "Lastname"}
+	for i := 0; i < len(required); i++ {
+		key := required[i]
+		if _, exists := r[key]; exists {
+			continue
+		} else {
+			return &model.Contact{}, fmt.Errorf("columns %s is missing", key)
+		}
+	}
+
+	return &model.Contact{
+		Phone:     r["Phone"],
+		Firstname: r["Firstname"],
+		Lastname:  r["Lastname"],
+	}, nil
+}
+
+func (i *ImportFile) insert(header []string, row []string) (*model.Contact, error) {
+	c, err := i.createContactFromRow(header, row)
+	if err != nil {
+		return &model.Contact{}, err
+	}
+	slog.Debug("Model created", "contact", fmt.Sprintf("%#v", c))
+
+	err = i.Repository.Insert(c)
+
+	return c, err
 }

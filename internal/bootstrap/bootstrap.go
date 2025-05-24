@@ -17,12 +17,8 @@ func Load(c *config.AppConfig) *app.Application {
 	}
 
 	a.SetLogger(l)
-
 	initDatabase(c)
-
 	a.PrintConfig()
-
-	//app.Get().Services = InitServices()
 
 	return a
 }
