@@ -12,7 +12,7 @@ import (
 var DB *gorm.DB
 var connected bool
 
-func Connect(c config.DbConfig) error {
+func Connect(c *config.DbConfig) error {
 	connected = false
 	var err error
 	DB, err = gorm.Open(mysql.Open(c.Dsn), &gorm.Config{})

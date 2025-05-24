@@ -1,8 +1,8 @@
 package queue
 
 import (
-	"go-csv-import/internal/app"
 	"go-csv-import/internal/config"
+	"log/slog"
 
 	"github.com/streadway/amqp"
 )
@@ -14,10 +14,10 @@ type AmqpQueueHandler interface {
 }
 
 type AmqpQueue struct {
-	Config config.ApmqConfig
+	Config *config.ApmqConfig
 }
 
-func NewAmqpQueue(c config.ApmqConfig) *AmqpQueue {
+func NewAmqpQueue(c *config.ApmqConfig) *AmqpQueue {
 	return &AmqpQueue{Config: c}
 }
 
@@ -53,13 +53,13 @@ func (q *AmqpQueue) Publish(queue string, body []byte) error {
 func (q *AmqpQueue) Consume(queue string, autoAck bool) <-chan amqp.Delivery {
 	_, ch, err := q.getChannel(queue)
 	if err != nil {
-		app.Get().Log().Error("Connect to RabbitMQ", "error", err)
+		slog.Error("Connect to RabbitMQ", "error", err)
 		panic(err)
 	}
 
 	msgs, err := ch.Consume(queue, "", autoAck, false, false, false, nil)
 	if err != nil {
-		app.Get().Log().Error("Error while consuming message", "error", err)
+		slog.Error("Error while consuming message", "error", err)
 		panic(err)
 	}
 

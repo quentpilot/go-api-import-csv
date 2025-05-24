@@ -15,13 +15,13 @@ type AmqpQueueService interface {
 }
 
 type ImportFileQueue struct {
-	AmqpConfig config.ApmqConfig
-	HttpConfig config.HttpConfig
+	AmqpConfig *config.ApmqConfig
+	HttpConfig *config.HttpConfig
 	Queue      *queue.AmqpQueue
 	Imporer    *ImportFile
 }
 
-func NewImportFileQueuePublisher(a config.ApmqConfig, h config.HttpConfig) *ImportFileQueue {
+func NewImportFileQueuePublisher(a *config.ApmqConfig, h *config.HttpConfig) *ImportFileQueue {
 	self := &ImportFileQueue{
 		AmqpConfig: a,
 		HttpConfig: h,
@@ -32,7 +32,7 @@ func NewImportFileQueuePublisher(a config.ApmqConfig, h config.HttpConfig) *Impo
 	return self
 }
 
-func NewImportFileQueueConsumer(a config.ApmqConfig, h config.HttpConfig, d config.DbConfig) *ImportFileQueue {
+func NewImportFileQueueConsumer(a *config.ApmqConfig, h *config.HttpConfig, d *config.DbConfig) *ImportFileQueue {
 	self := NewImportFileQueuePublisher(a, h)
 
 	self.Imporer = NewImportFile(h, d)

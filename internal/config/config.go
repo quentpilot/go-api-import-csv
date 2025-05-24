@@ -13,6 +13,16 @@ type EnvConfig interface {
 	Load() // Load current config type with env vars or fallback values
 }
 
+// Config holds the application modules parameters when initializing the application.
+type AppConfig struct {
+	LoggerName string       // File name for the current logger (default: "root")
+	Logger     LoggerConfig // Logger configuration
+	Http       HttpConfig   // HTTP server configuration
+	Amqp       ApmqConfig   // AMQP server configuration
+	Db         DbConfig     // Database server configuration
+	UseDb      bool         // Whether to open a database connection (default: false)
+}
+
 func LoadEnv() {
 	err := godotenv.Load(".env")
 	if err != nil {

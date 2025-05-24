@@ -14,8 +14,8 @@ type HttpRouter interface {
 }
 
 type UploadRouter struct {
-	HttpConfig config.HttpConfig
-	AmqpConfig config.ApmqConfig
+	HttpConfig *config.HttpConfig
+	AmqpConfig *config.ApmqConfig
 }
 
 func (r UploadRouter) Load(s *gin.Engine) {

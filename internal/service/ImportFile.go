@@ -20,11 +20,11 @@ type ImportFileService interface {
 }
 
 type ImportFile struct {
-	HttpConfig config.HttpConfig
-	DbConfig   config.DbConfig
+	HttpConfig *config.HttpConfig
+	DbConfig   *config.DbConfig
 }
 
-func NewImportFile(h config.HttpConfig, d config.DbConfig) *ImportFile {
+func NewImportFile(h *config.HttpConfig, d *config.DbConfig) *ImportFile {
 	return &ImportFile{
 		HttpConfig: h,
 		DbConfig:   d,
