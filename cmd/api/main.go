@@ -4,18 +4,20 @@ import (
 	"go-csv-import/internal/app"
 	"go-csv-import/internal/bootstrap"
 	"go-csv-import/internal/server"
-	"go-csv-import/internal/server/routes"
 )
 
 func main() {
-	bootstrap.Init(app.AppConfig{
+	self := bootstrap.Init(app.AppConfig{
 		LoggerName: "api",
 	})
-	bootstrap.WatchForReload()
+	self.WatchForReload()
 
-	s := server.Init()
+	s := server.New()
 
-	server.LoadRoutes(s, routes.UploadRouter{})
+	s.LoadRoutes(server.UploadRouter{
+		HttpConfig: self.HttpConfig(),
+		AmqpConfig: self.AmqpConfig(),
+	})
 
-	server.Run(s, app.HttpConfig().Port)
+	s.Run(self.HttpConfig().Port)
 }

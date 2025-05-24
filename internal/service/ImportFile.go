@@ -1,13 +1,13 @@
-package importer
+package service
 
-/*import (
+import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
-	"go-csv-import/internal/app"
+	"go-csv-import/internal/config"
 	"go-csv-import/internal/job"
 	"io"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -15,31 +15,47 @@ package importer
 	"time"
 )
 
-func ProcessFile(file job.ImportJob) error {
-	chunk, err := mustChunkFile(file)
+type ImportFileService interface {
+	Import(file job.TempFileJob) error
+}
+
+type ImportFile struct {
+	HttpConfig config.HttpConfig
+	DbConfig   config.DbConfig
+}
+
+func NewImportFile(h config.HttpConfig, d config.DbConfig) *ImportFile {
+	return &ImportFile{
+		HttpConfig: h,
+		DbConfig:   d,
+	}
+}
+
+func (i *ImportFile) Import(file *job.ImportJob) error {
+	chunk, err := i.mustChunkFile(file)
 	if err != nil {
-		app.Log().Error("Error checking chunk file:", "error", err)
+		slog.Error("Error checking chunk file:", "error", err)
 		return fmt.Errorf("error checking chunk file: %w", err)
 	}
 
-	files := job.JobStat{FilePath: file.FilePath, TotalRows: 0, ProcessTime: 0}
+	files := &job.JobStat{FilePath: file.FilePath, TotalRows: 0, ProcessTime: 0}
 	if chunk {
-		files, err := chunkFile(file)
+		files, err := i.chunkFile(file)
 		if err != nil {
-			app.Log().Error("Error chunking file:", "file", err)
+			slog.Error("Error chunking file:", "file", err)
 			return fmt.Errorf("error chunking file: %w", err)
 		}
 
-		return processSeveralFiles(files)
+		return i.processSeveralFiles(files)
 	}
 
-	app.Log().Info("Processing single file:", "file", file.FilePath)
-	return processSingleFile(files)
+	slog.Info("Processing single file:", "file", file.FilePath)
+	return i.processSingleFile(files)
 }
 
 // Parse CSV file
-func processSingleFile(file job.JobStat) error {
-	app.Log().Info("Processing current file:", "file", file.FilePath)
+func (i *ImportFile) processSingleFile(file *job.JobStat) error {
+	slog.Info("Processing current file:", "file", file.FilePath)
 
 	start := time.Now()
 
@@ -56,7 +72,7 @@ func processSingleFile(file job.JobStat) error {
 	if err != nil {
 		return err
 	}
-	app.Log().Debug("CSV Headers:", "headers", headers)
+	slog.Debug("CSV Headers:", "headers", headers)
 
 	file.TotalRows = 0
 	for {
@@ -65,24 +81,24 @@ func processSingleFile(file job.JobStat) error {
 			break
 		}
 		if err != nil {
-			app.Log().Error("failed to read row", "row", record, "error", err)
+			slog.Error("failed to read row", "row", record, "error", err)
 			return fmt.Errorf("failed to read row: %w", err)
 		}
 
 		// Print each line
-		app.Log().Debug("Read current line", "row", record)
+		slog.Debug("Read current line", "row", record)
 		file.TotalRows++
 	}
 
 	file.ProcessTime = time.Since(start)
 
-	app.Log().Info(file.PrintStat())
+	slog.Info(file.PrintStat())
 
 	return nil
 }
 
-func processSeveralFiles(files []job.JobStat) error {
-	app.Log().Info("Processing several files", "files", files)
+func (i *ImportFile) processSeveralFiles(files []job.JobStat) error {
+	slog.Info("Processing several files", "files", files)
 
 	// Define max CPU usage to avoir using all CPU cores
 	maxCPU := runtime.NumCPU()
@@ -104,49 +120,32 @@ func processSeveralFiles(files []job.JobStat) error {
 
 			defer func() { sem <- struct{}{} }()
 
-			if err := processSingleFile(f); err != nil {
-				log.Printf("Error processing file %s: %v", f.FilePath, err)
+			if err := i.processSingleFile(&f); err != nil {
+				slog.Error(fmt.Sprintf("Error processing file %s: %v", f.FilePath, err))
 			}
 
 		}(file)
 	}
 	wg.Wait()
-	app.Log().Info("All files processed")
+	slog.Info("All files processed")
 
 	for _, file := range files {
 		if err := file.Remove(); err != nil {
-			app.Log().Error("Error removing file", "file", file.FilePath, "error", err)
+			slog.Error("Error removing file", "file", file.FilePath, "error", err)
 		} else {
-			app.Log().Info("File has been removed successfully", "file", file.FilePath)
+			slog.Info("File has been removed successfully", "file", file.FilePath)
 		}
 	}
 
 	return nil
 }
 
-// Reads first line of the CSV file and returns the headers
-func getCsvHeaders(path string) (headers []string, error error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return headers, err
-	}
-	defer f.Close()
+/*
+Check if the file has more than maximum rows configured.
 
-	reader := csv.NewReader(f)
-
-	// Skip header
-	headers, err = reader.Read()
-	if err != nil {
-		return headers, err
-	}
-
-	return headers, nil
-}
-
-
-//Check if the file has more than maximum rows configured.
-//This determines if the file should be chunked or not.
-func mustChunkFile(file job.ImportJob) (bool, error) {
+This determines if the file should be chunked or not.
+*/
+func (i *ImportFile) mustChunkFile(file *job.ImportJob) (bool, error) {
 	f, err := os.Open(file.FilePath)
 	if err != nil {
 		return false, err
@@ -176,7 +175,7 @@ The chunk files will contain the same header as the original file.
 The chunk files will be returned as a slice of strings.
 The original file will not be modified.
 */
-/*func chunkFile(file job.ImportJob) ([]job.JobStat, error) {
+func (i *ImportFile) chunkFile(file *job.ImportJob) ([]job.JobStat, error) {
 	f, err := os.Open(file.FilePath)
 	if err != nil {
 		return nil, err
@@ -255,4 +254,3 @@ The original file will not be modified.
 
 	return chunkFiles, nil
 }
-*/

@@ -1,23 +1,28 @@
 package queue
 
 import (
-	"encoding/json"
 	"go-csv-import/internal/app"
-	"go-csv-import/internal/importer"
-	"go-csv-import/internal/job"
-	"time"
+	"go-csv-import/internal/config"
 
 	"github.com/streadway/amqp"
 )
 
-type RabbitPublisher struct{}
-
-func (r *RabbitPublisher) PublishImportJob(path string, maxRows int) error {
-	return PublishImportJob(path, maxRows)
+type AmqpQueueHandler interface {
+	getChannel() (*amqp.Connection, *amqp.Channel, error)
+	Publish() error
+	Consume() <-chan amqp.Delivery
 }
 
-func getChannel() (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := amqp.Dial(app.AmqpConfig().Dsn)
+type AmqpQueue struct {
+	Config config.ApmqConfig
+}
+
+func NewAmqpQueue(c config.ApmqConfig) *AmqpQueue {
+	return &AmqpQueue{Config: c}
+}
+
+func (q *AmqpQueue) getChannel(queue string) (*amqp.Connection, *amqp.Channel, error) {
+	conn, err := amqp.Dial(q.Config.Dsn)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -27,39 +32,42 @@ func getChannel() (*amqp.Connection, *amqp.Channel, error) {
 		return nil, nil, err
 	}
 
-	_, err = ch.QueueDeclare(app.AmqpConfig().Queue, true, false, false, false, nil)
+	_, err = ch.QueueDeclare(queue, true, false, false, false, nil)
 	return conn, ch, err
 }
 
-func PublishImportJob(filepath string, maxRows int) error {
-	conn, ch, err := getChannel()
+func (q *AmqpQueue) Publish(queue string, body []byte) error {
+	conn, ch, err := q.getChannel(queue)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	defer ch.Close()
 
-	job := job.ImportJob{FilePath: filepath, MaxRows: maxRows}
-	body, _ := json.Marshal(job)
-
-	return ch.Publish("", app.AmqpConfig().Queue, false, false, amqp.Publishing{
+	return ch.Publish("", queue, false, false, amqp.Publishing{
 		ContentType: "application/json",
 		Body:        body,
 	})
 }
 
-func ConsumeImportJobs() {
-	_, ch, err := getChannel()
+func (q *AmqpQueue) Consume(queue string, autoAck bool) <-chan amqp.Delivery {
+	_, ch, err := q.getChannel(queue)
 	if err != nil {
-		app.Log().Error("Connect to RabbitMQ", "error", err)
+		app.Get().Log().Error("Connect to RabbitMQ", "error", err)
 		panic(err)
 	}
 
-	msgs, err := ch.Consume(app.AmqpConfig().Queue, "", false, false, false, false, nil)
+	msgs, err := ch.Consume(queue, "", autoAck, false, false, false, nil)
 	if err != nil {
-		app.Log().Error("Error while consuming message", "error", err)
+		app.Get().Log().Error("Error while consuming message", "error", err)
 		panic(err)
 	}
+
+	return msgs
+}
+
+/* func ConsumeImportJobs() {
+	msgs := Consume(app.AmqpConfig().Queue, false)
 
 	for msg := range msgs {
 		var job job.ImportJob
@@ -86,4 +94,4 @@ func ConsumeImportJobs() {
 		msg.Ack(false)
 		app.Log().Info("Message acknowledged")
 	}
-}
+} */

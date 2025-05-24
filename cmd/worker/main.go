@@ -3,17 +3,19 @@ package main
 import (
 	"go-csv-import/internal/app"
 	"go-csv-import/internal/bootstrap"
-	"go-csv-import/internal/queue"
+	"go-csv-import/internal/service"
 )
 
 func main() {
-	bootstrap.Init(app.AppConfig{
+	self := bootstrap.Init(app.AppConfig{
 		LoggerName: "worker",
 		UseDb:      true,
 	})
-	bootstrap.WatchForReload()
+	self.WatchForReload()
+	self.Log().Info("Worker is listening...")
 
-	app.Log().Info("Worker is listening...")
-	queue.ConsumeImportJobs()
-	app.Log().Info("...Shutdown Worker")
+	worker := service.NewImportFileQueueConsumer(self.AmqpConfig(), self.HttpConfig(), self.DbConfig())
+
+	worker.Consume()
+	self.Log().Info("...Shutdown Worker")
 }

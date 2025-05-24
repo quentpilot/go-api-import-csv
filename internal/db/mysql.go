@@ -1,7 +1,7 @@
 package db
 
 import (
-	"go-csv-import/internal/app"
+	"go-csv-import/internal/config"
 	"go-csv-import/internal/model"
 	"time"
 
@@ -12,10 +12,10 @@ import (
 var DB *gorm.DB
 var connected bool
 
-func Connect() error {
+func Connect(c config.DbConfig) error {
 	connected = false
 	var err error
-	DB, err = gorm.Open(mysql.Open(app.DbConfig().Dsn), &gorm.Config{})
+	DB, err = gorm.Open(mysql.Open(c.Dsn), &gorm.Config{})
 	if err != nil {
 		return err
 	}

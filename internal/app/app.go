@@ -3,8 +3,12 @@ package app
 import (
 	"fmt"
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/logger"
 	"log/slog"
+	"os"
+	"os/signal"
 	"sync/atomic"
+	"syscall"
 )
 
 var application *Application
@@ -12,7 +16,7 @@ var application *Application
 // Application holds the application modules like app env config, logger, etc.
 type Application struct {
 	logger atomic.Pointer[slog.Logger]
-	Config *AppConfig
+	Conf   *AppConfig
 }
 
 // Config holds the application modules parameters when initializing the application.
@@ -40,12 +44,12 @@ func Get() *Application {
 }
 
 func (a *Application) PrintConfig() {
-	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.LoggerName))
-	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Logger))
-	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Http))
-	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Amqp))
-	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.Db))
-	a.Logger().Debug(fmt.Sprintf("%#v", application.Config.UseDb))
+	a.Logger().Debug(fmt.Sprintf("%#v", a.Config().LoggerName))
+	a.Logger().Debug(fmt.Sprintf("%#v", a.Config().Logger))
+	a.Logger().Debug(fmt.Sprintf("%#v", a.Config().Http))
+	a.Logger().Debug(fmt.Sprintf("%#v", a.Config().Amqp))
+	a.Logger().Debug(fmt.Sprintf("%#v", a.Config().Db))
+	a.Logger().Debug(fmt.Sprintf("%#v", a.Config().UseDb))
 }
 
 func (a *Application) Logger() *slog.Logger {
@@ -56,22 +60,53 @@ func (a *Application) SetLogger(l *slog.Logger) {
 	a.logger.Store(l)
 }
 
-func Log() *slog.Logger {
+func (a *Application) Log() *slog.Logger {
 	return Get().Logger()
 }
 
-func Config() *AppConfig {
-	return Get().Config
+func (a *Application) Config() *AppConfig {
+	return Get().Conf
 }
 
-func HttpConfig() config.HttpConfig {
-	return Get().Config.Http
+func (a *Application) HttpConfig() config.HttpConfig {
+	return a.Config().Http
 }
 
-func AmqpConfig() config.ApmqConfig {
-	return Get().Config.Amqp
+func (a *Application) AmqpConfig() config.ApmqConfig {
+	return a.Config().Amqp
 }
 
-func DbConfig() config.DbConfig {
-	return Get().Config.Db
+func (a *Application) DbConfig() config.DbConfig {
+	return a.Config().Db
+}
+
+// WatchForReload listen SIGHUP, reload .env and update app configuration.
+func (a *Application) WatchForReload() {
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, syscall.SIGHUP)
+
+		for range sigChan {
+			slog.Info("Reload configuration (SIGHUP)")
+
+			if err := config.ReloadEnv(); err != nil {
+				slog.Error("Failed to reload .env", "error", err)
+				continue
+			}
+
+			a.Config().Http.Load()
+			a.Config().Logger.Load()
+
+			newLogger, err := logger.InitCurrent(a.Config().LoggerName, a.Config().Logger.Level, false)
+			if err != nil {
+				slog.Error("Failed to reload logger", "error", err)
+			} else {
+				a.SetLogger(newLogger)
+				a.Log().Info("Configuration reloaded", "level", a.Config().Logger.Level)
+				a.PrintConfig()
+				//fmt.Printf("app.Logger ptr: %p\n", app.Get().Logger())
+				//fmt.Printf("slog.Default() ptr: %p\n", slog.Default())
+			}
+		}
+	}()
 }

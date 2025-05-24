@@ -61,7 +61,7 @@ func New(name string, level string, useJSON bool) (*slog.Logger, error) {
 	}
 
 	logger := slog.New(handler)
-	//slog.SetDefault(logger)
+	slog.SetDefault(logger)
 	return logger, nil
 }
 

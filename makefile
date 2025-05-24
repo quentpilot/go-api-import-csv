@@ -2,6 +2,7 @@
 PROJECT_NAME := go-api-import-csv
 SERVICE_NAME_API := api
 SERVICE_NAME_WORKER := worker
+SERVICE_NAME_AMQP := rabbitmq
 
 # Run API in development mode
 dev-api:

@@ -1,8 +1,10 @@
 package handlers
 
 import (
-	"go-csv-import/internal/app"
+	"go-csv-import/internal/job"
+	"go-csv-import/internal/service"
 	"go-csv-import/internal/validation"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 
@@ -14,20 +16,20 @@ type JobPublisher interface {
 }
 
 // Upload file webservice
-func Upload(publisher JobPublisher) gin.HandlerFunc {
+func Upload(publisher *service.ImportFileQueue) gin.HandlerFunc {
 	// TODO: Check file size to limit
 	// TODO: handle Go channels to get errors and limit go routine for a lot of files
 	return func(c *gin.Context) {
 		file, err := c.FormFile("file")
 		if err != nil {
-			app.Log().Error("Error uploading file", "error", err)
+			slog.Error("Error uploading file", "error", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing file"})
 			return
 		}
 
 		err = validation.IsValidCSV(file.Filename)
 		if err != nil {
-			app.Log().Error("Error validating file type is a .csv", "error", err)
+			slog.Error("Error validating file type is a .csv", "error", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
@@ -35,19 +37,24 @@ func Upload(publisher JobPublisher) gin.HandlerFunc {
 		// Save uploaded file through shared volume
 		dst := filepath.Join("/shared", file.Filename)
 		if err := c.SaveUploadedFile(file, dst); err != nil {
-			app.Log().Error("Error saving file", "error", err)
+			slog.Error("Error saving file", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		// Send file path to RabbitMQ
-		if err := publisher.PublishImportJob(dst, app.HttpConfig().FileChunkLimit); err != nil {
-			app.Log().Error("Error publishing job to RabbitMQ", "error", err)
+		job := &job.ImportJob{
+			FilePath: dst,
+			MaxRows:  publisher.HttpConfig.FileChunkLimit,
+		}
+
+		if err := publisher.Publish(job); err != nil {
+			slog.Error("Error publishing job to RabbitMQ", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
 			return
 		}
 
-		app.Log().Info("File is being processed", "file", file.Filename)
+		slog.Info("File is being processed", "file", file.Filename)
 		c.JSON(http.StatusOK, gin.H{"message": "File is being processed"})
 	}
 }

@@ -2,14 +2,10 @@ package bootstrap
 
 import (
 	"go-csv-import/internal/app"
-	"go-csv-import/internal/config"
 	"go-csv-import/internal/db"
 	"go-csv-import/internal/logger"
 	"log/slog"
-	"os"
-	"os/signal"
 	"sync"
-	"syscall"
 )
 
 var appOnce sync.Once
@@ -20,13 +16,15 @@ func Init(c app.AppConfig) *app.Application {
 		l := iniLogger(c)
 
 		a := &app.Application{
-			Config: &c,
+			Conf: &c,
 		}
 
 		a.SetLogger(l)
 		app.Set(a)
 
 		initDatabase(&c)
+
+		//app.Get().Services = InitServices()
 	})
 
 	return app.Get()
@@ -57,41 +55,16 @@ func initEnvConfig(c *app.AppConfig) {
 // Opens a new database connection
 func initDatabase(c *app.AppConfig) {
 	if c.UseDb {
-		if err := db.Connect(); err != nil {
-			app.Log().Error("Failed to connect to database", "error", err)
+		if err := db.Connect(c.Db); err != nil {
+			slog.Error("Failed to connect to database", "error", err)
 			panic(err)
 		}
 		db.AutoMigrate()
 	}
 }
 
-// WatchForReload listen SIGHUP, reload .env and update app configuration.
-func WatchForReload() {
-	go func() {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGHUP)
-
-		for range sigChan {
-			app.Log().Info("Reload configuration (SIGHUP)")
-
-			if err := config.ReloadEnv(); err != nil {
-				slog.Error("Failed to reload .env", "error", err)
-				continue
-			}
-
-			app.Config().Http.Load()
-			app.Config().Logger.Load()
-
-			newLogger, err := logger.InitCurrent(app.Config().LoggerName, app.Config().Logger.Level, false)
-			if err != nil {
-				slog.Error("Failed to reload logger", "error", err)
-			} else {
-				app.Get().SetLogger(newLogger)
-				app.Log().Info("Configuration reloaded", "level", app.Config().Logger.Level)
-				app.Get().PrintConfig()
-				//fmt.Printf("app.Logger ptr: %p\n", app.Get().Logger())
-				//fmt.Printf("slog.Default() ptr: %p\n", slog.Default())
-			}
-		}
-	}()
-}
+/* func InitServices() *Services {
+	return &Services{
+		Queue: service.NewImportFileQueue(),
+	}
+} */

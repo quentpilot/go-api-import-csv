@@ -18,6 +18,13 @@ type ImportJob struct {
 	MaxRows  int    `json:"max_rows"` // Max number of file rows to process by worker
 }
 
+// JobStat is a structure to store job statistics
+type JobStat struct {
+	FilePath    string        // File to treat
+	TotalRows   int           // Total number of rows in the file
+	ProcessTime time.Duration // Time taken to process the file
+}
+
 // Safe removes temporary file by checking that file exists and is not a directory
 func (j *ImportJob) Remove() error {
 	i, err := os.Stat(j.FilePath)
@@ -30,13 +37,6 @@ func (j *ImportJob) Remove() error {
 	}
 
 	return os.Remove(j.FilePath)
-}
-
-// JobStat is a structure to store job statistics
-type JobStat struct {
-	FilePath    string        // File to treat
-	TotalRows   int           // Total number of rows in the file
-	ProcessTime time.Duration // Time taken to process the file
 }
 
 // Safe removes temporary file by checking that file exists and is not a directory
