@@ -58,6 +58,7 @@ func (q *ImportFileQueue) Consume() {
 
 		start := time.Now()
 		slog.Info("Try to treat file:", "file", job.FilePath)
+
 		if err := q.Imporer.Import(&job); err != nil {
 			slog.Error("Error Treatment:", "error", err)
 		} else {

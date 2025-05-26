@@ -17,8 +17,5 @@ func main() {
 
 	self.Services.ImportFileQueue.Consume()
 
-	/* worker := service.NewImportFileQueueConsumer(self.AmqpConfig(), self.HttpConfig(), self.DbConfig())
-
-	worker.Consume() */
 	self.Log().Info("...Shutdown Worker")
 }

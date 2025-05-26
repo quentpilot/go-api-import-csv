@@ -65,33 +65,3 @@ func (q *AmqpQueue) Consume(queue string, autoAck bool) <-chan amqp.Delivery {
 
 	return msgs
 }
-
-/* func ConsumeImportJobs() {
-	msgs := Consume(app.AmqpConfig().Queue, false)
-
-	for msg := range msgs {
-		var job job.ImportJob
-		if err := json.Unmarshal(msg.Body, &job); err != nil {
-			app.Log().Error("Invalid Job format:", "body", msg.Body, "error", err)
-			continue
-		}
-
-		start := time.Now()
-		app.Log().Info("Try to treat file:", "file", job.FilePath)
-		if err := importer.ProcessFile(job); err != nil {
-			app.Log().Error("Error Treatment:", "error", err)
-		} else {
-			app.Log().Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
-
-			err = job.Remove()
-			if err != nil {
-				app.Log().Error("Cannot properly remove file '", "file", job.FilePath, "error", err)
-			} else {
-				app.Log().Info("File has been successful deleted:", "file", job.FilePath)
-			}
-		}
-
-		msg.Ack(false)
-		app.Log().Info("Message acknowledged")
-	}
-} */
