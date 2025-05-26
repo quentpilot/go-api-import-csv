@@ -63,13 +63,6 @@ func (q *ImportFileQueue) Consume() {
 			slog.Error("Error Treatment:", "error", err)
 		} else {
 			slog.Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
-
-			err = job.Remove()
-			if err != nil {
-				slog.Error("Cannot properly remove file '", "file", job.FilePath, "error", err)
-			} else {
-				slog.Info("File has been successful deleted:", "file", job.FilePath)
-			}
 		}
 
 		//msg.Ack(false)

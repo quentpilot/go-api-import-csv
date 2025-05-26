@@ -125,6 +125,7 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 
 		// Print each line
 		//slog.Debug("Read current line", "row", record)
+		//return fmt.Errorf("simulate failed to insert contacts")
 
 		// Batch insert contacts
 		br := i.insertBatch(batch, headers, record, false)
@@ -152,6 +153,11 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 
 	slog.Info(file.PrintStat())
 
+	if err := file.Remove(); err != nil {
+		return fmt.Errorf("cannot removing file %s: %w", file.FilePath, err)
+	}
+	slog.Info("File has been removed successfully", "file", file.FilePath)
+
 	return nil
 }
 
@@ -165,37 +171,46 @@ func (i *ImportFile) processSeveralFiles(files []job.JobStat) error {
 	}
 	runtime.GOMAXPROCS(maxCPU)
 
-	sem := make(chan struct{}, maxCPU)
+	jobs := make(chan job.JobStat)
+	errs := make(chan error, len(files))
 
 	var wg sync.WaitGroup
 
-	for _, file := range files {
+	// Consume files
+	for w := 0; w < maxCPU; w++ {
 		wg.Add(1)
-		go func(f job.JobStat) {
+		go func() {
 			defer wg.Done()
-
-			sem <- struct{}{}
-
-			defer func() { sem <- struct{}{} }()
-
-			if err := i.processSingleFile(&f); err != nil {
-				slog.Error(fmt.Sprintf("Error processing file %s: %v", f.FilePath, err))
+			for file := range jobs {
+				if err := i.processSingleFile(&file); err != nil {
+					slog.Error(fmt.Sprintf("Error processing file %s: %v", file.FilePath, err))
+					errs <- fmt.Errorf("file %s: %w", file.FilePath, err)
+				}
 			}
 
-		}(file)
+		}()
 	}
-	wg.Wait()
+
+	// Send files to jobs channel
+	go func() {
+		for _, file := range files {
+			jobs <- file
+		}
+		close(jobs)
+	}()
+
+	go func() {
+		wg.Wait()
+		close(errs)
+	}()
+
+	var pErrors []error
+	for err := range errs {
+		pErrors = append(pErrors, err)
+	}
 	slog.Info("All files processed")
 
-	for _, file := range files {
-		if err := file.Remove(); err != nil {
-			slog.Error("Error removing file", "file", file.FilePath, "error", err)
-		} else {
-			slog.Info("File has been removed successfully", "file", file.FilePath)
-		}
-	}
-
-	return nil
+	return errors.Join(pErrors...)
 }
 
 /*
