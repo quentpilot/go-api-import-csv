@@ -2,11 +2,15 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/db"
 	"go-csv-import/internal/job"
 	"go-csv-import/internal/queue"
 	"log/slog"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 type AmqpQueueService interface {
@@ -60,11 +64,35 @@ func (q *ImportFileQueue) Consume() {
 		slog.Info("Try to treat file:", "file", job.FilePath)
 
 		if err := q.Imporer.Import(&job); err != nil {
-			slog.Error("Error Treatment:", "error", err)
+			if errs, ok := err.(*multierror.Error); ok {
+				for _, e := range errs.Errors {
+					var fe *FileError
+					if errors.As(e, &fe) {
+						slog.Error("Error processing file", "file", fe.FilePath, "error", fe)
+						continue
+					}
+
+					var de *db.DbError
+					if errors.As(e, &de) {
+						slog.Error("Database error", "error", de)
+						continue
+					}
+
+					slog.Error("Unexpected error", "file", job.FilePath, "error", e)
+				}
+			} else {
+				if ie, ok := err.(*FileError); ok {
+					slog.Error("Error processing single file", "file", job.FilePath, "error", ie.Err)
+				} else if de, ok := err.(*db.DbError); ok {
+					slog.Error("Database error for single file", "error", de.Err)
+				} else {
+					slog.Error("Unexpected error for single file", "file", job.FilePath, "error", err)
+				}
+			}
 		} else {
 			slog.Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))
 		}
-
+		job.Remove()
 		//msg.Ack(false)
 		slog.Info("Message acknowledged")
 	}

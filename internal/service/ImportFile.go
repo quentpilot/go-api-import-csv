@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/db"
 	"go-csv-import/internal/job"
 	"go-csv-import/internal/model"
 	"go-csv-import/internal/repository"
@@ -16,6 +17,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/hashicorp/go-multierror"
 )
 
 type ImportFileService interface {
@@ -53,6 +56,19 @@ func (b *Batch) IsReached(maxBatch uint) bool {
 	return b.Length == maxBatch
 }
 
+type FileError struct {
+	FilePath string // Path to the file that caused the error
+	Err      error
+}
+
+func (e *FileError) Error() string {
+	return fmt.Sprintf("error processing file %s: %v", e.FilePath, e.Err)
+}
+
+func (e *FileError) Unwrap() error {
+	return e.Err
+}
+
 func NewImportFile(h *config.HttpConfig, d *config.DbConfig) *ImportFile {
 	return &ImportFile{
 		HttpConfig: h,
@@ -69,22 +85,24 @@ func (i *ImportFile) Import(file *job.ImportJob) error {
 	i.reset()
 	chunk, err := i.mustChunkFile(file)
 	if err != nil {
-		slog.Error("Error checking chunk file:", "error", err)
-		return fmt.Errorf("error checking chunk file: %w", err)
+		return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("error checking chunk file: %w", err)}
+		//slog.Error("Error checking chunk file:", "error", err)
+		//return fmt.Errorf("error checking chunk file: %w", err)
 	}
 
 	files := &job.JobStat{FilePath: file.FilePath, TotalRows: 0, ProcessTime: 0}
 	if chunk {
 		files, err := i.chunkFile(file)
 		if err != nil {
-			slog.Error("Error chunking file:", "file", err)
-			return fmt.Errorf("error chunking file: %w", err)
+			return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("error chunking file: %w", err)}
+			//slog.Error("Error chunking file:", "file", err)
+			//return fmt.Errorf("error chunking file: %w", err)
 		}
 
 		return i.processSeveralFiles(files)
 	}
 
-	slog.Info("Processing single file:", "file", file.FilePath)
+	slog.Info("Processing single file:")
 	return i.processSingleFile(files)
 }
 
@@ -96,9 +114,10 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 
 	f, err := os.Open(file.FilePath)
 	if err != nil {
-		return err
+		return &FileError{FilePath: file.FilePath, Err: err}
 	}
 	defer f.Close()
+	defer file.Remove()
 
 	reader := csv.NewReader(f)
 	reader.Comma = ';'
@@ -119,26 +138,16 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 			break
 		}
 		if err != nil {
-			slog.Error("failed to read row", "row", record, "error", err)
-			return fmt.Errorf("failed to read row: %w", err)
+			return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("failed to read row: %w", err)}
 		}
 
-		// Print each line
-		//slog.Debug("Read current line", "row", record)
-		//return fmt.Errorf("simulate failed to insert contacts")
+		//return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("simulate error file")}
 
 		// Batch insert contacts
 		br := i.insertBatch(batch, headers, record, false)
 		if br != nil {
-			slog.Error("Error while insert batch contacts", "error", br, "force", false)
+			return &db.DbError{Err: fmt.Errorf("error while insert batch contacts: %w", br)}
 		}
-
-		/* contact, err := i.insert(headers, record)
-		if err != nil {
-			slog.Error("Failed to insert current contact", "error", err.Error())
-		} else {
-			slog.Debug("New contact inserted", "contact", fmt.Sprintf("%#v", contact))
-		} */
 
 		file.TotalRows++
 	}
@@ -146,17 +155,10 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 	// Batch insert contacts
 	br := i.insertBatch(batch, headers, []string{}, true)
 	if br != nil {
-		slog.Error("Error while insert batch contacts", "error", br, "force", true)
+		return &db.DbError{Err: fmt.Errorf("error while forcing insert batch contacts: %w", br)}
 	}
 
 	file.ProcessTime = time.Since(start)
-
-	slog.Info(file.PrintStat())
-
-	if err := file.Remove(); err != nil {
-		return fmt.Errorf("cannot removing file %s: %w", file.FilePath, err)
-	}
-	slog.Info("File has been removed successfully", "file", file.FilePath)
 
 	return nil
 }
@@ -173,6 +175,7 @@ func (i *ImportFile) processSeveralFiles(files []job.JobStat) error {
 
 	jobs := make(chan job.JobStat)
 	errs := make(chan error, len(files))
+	var aErrs *multierror.Error
 
 	var wg sync.WaitGroup
 
@@ -183,7 +186,7 @@ func (i *ImportFile) processSeveralFiles(files []job.JobStat) error {
 			defer wg.Done()
 			for file := range jobs {
 				if err := i.processSingleFile(&file); err != nil {
-					slog.Error(fmt.Sprintf("Error processing file %s: %v", file.FilePath, err))
+					//slog.Error(fmt.Sprintf("Error processing file %s: %v", file.FilePath, err))
 					errs <- fmt.Errorf("file %s: %w", file.FilePath, err)
 				}
 			}
@@ -199,18 +202,18 @@ func (i *ImportFile) processSeveralFiles(files []job.JobStat) error {
 		close(jobs)
 	}()
 
+	// Wait for workers and close errors channel
 	go func() {
 		wg.Wait()
 		close(errs)
 	}()
 
-	var pErrors []error
+	// Collect and join errors
 	for err := range errs {
-		pErrors = append(pErrors, err)
+		aErrs = multierror.Append(aErrs, err)
 	}
-	slog.Info("All files processed")
 
-	return errors.Join(pErrors...)
+	return aErrs.ErrorOrNil()
 }
 
 /*
