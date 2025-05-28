@@ -54,9 +54,8 @@ func (q *ImportFileQueue) Publish(job *job.ImportJob) error {
 }
 
 func (q *ImportFileQueue) Consume() {
-	//msgs := q.Queue.Consume(q.AmqpConfig.Queue, true)
-	ctxInt, stopInt := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stopInt()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
 	for msg := range q.Queue.Consume(q.AmqpConfig.Queue, true) {
 		var job job.ImportJob
@@ -68,7 +67,7 @@ func (q *ImportFileQueue) Consume() {
 		start := time.Now()
 		slog.Info("Try to treat file:", "file", job.FilePath)
 
-		if err := q.Imporer.Import(ctxInt, &job); err != nil {
+		if err := q.Imporer.Import(ctx, &job); err != nil {
 			q.printTypedErrors(err, job)
 		} else {
 			slog.Info("File has been successful treated", "file", job.FilePath, "time", time.Since(start))

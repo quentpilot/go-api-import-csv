@@ -23,7 +23,7 @@ import (
 )
 
 type ImportFileService interface {
-	Import(ctxInt context.Context, file job.TempFileJob) error
+	Import(ctx context.Context, file job.TempFileJob) error
 }
 
 type ImportFile struct {
@@ -82,13 +82,11 @@ func (i *ImportFile) reset() {
 	i.Repository.Truncate()
 }
 
-func (i *ImportFile) Import(ctxInt context.Context, file *job.ImportJob) error {
+func (i *ImportFile) Import(ctx context.Context, file *job.ImportJob) error {
 	i.reset()
 	chunk, err := i.mustChunkFile(file)
 	if err != nil {
 		return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("error checking chunk file: %w", err)}
-		//slog.Error("Error checking chunk file:", "error", err)
-		//return fmt.Errorf("error checking chunk file: %w", err)
 	}
 
 	files := &job.JobStat{FilePath: file.FilePath, TotalRows: 0, ProcessTime: 0}
@@ -96,19 +94,20 @@ func (i *ImportFile) Import(ctxInt context.Context, file *job.ImportJob) error {
 		files, err := i.chunkFile(file)
 		if err != nil {
 			return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("error chunking file: %w", err)}
-			//slog.Error("Error chunking file:", "file", err)
-			//return fmt.Errorf("error chunking file: %w", err)
 		}
 
-		return i.processSeveralFiles(ctxInt, files)
+		return i.processSeveralFiles(ctx, files)
 	}
 
+	ctxT, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+
 	slog.Info("Processing single file:")
-	return i.processSingleFile(ctxInt, files)
+	return i.processSingleFile(ctxT, files)
 }
 
 // Parse CSV file
-func (i *ImportFile) processSingleFile(ctxInt context.Context, file *job.JobStat) error {
+func (i *ImportFile) processSingleFile(ctx context.Context, file *job.JobStat) error {
 	slog.Info("Processing current file:", "file", file.FilePath)
 
 	start := time.Now()
@@ -151,8 +150,8 @@ func (i *ImportFile) processSingleFile(ctxInt context.Context, file *job.JobStat
 		}
 
 		select {
-		case <-ctxInt.Done():
-			return ctxInt.Err()
+		case <-ctx.Done():
+			return ctx.Err()
 		default:
 		}
 
@@ -170,8 +169,10 @@ func (i *ImportFile) processSingleFile(ctxInt context.Context, file *job.JobStat
 	return nil
 }
 
-func (i *ImportFile) processSeveralFiles(ctxInt context.Context, files []job.JobStat) error {
+func (i *ImportFile) processSeveralFiles(ctx context.Context, files []job.JobStat) error {
 	slog.Info("Processing several files", "files", files)
+	ctxT, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
 
 	// Define max CPU usage to avoir using all CPU cores
 	maxCPU := runtime.NumCPU()
@@ -192,7 +193,7 @@ func (i *ImportFile) processSeveralFiles(ctxInt context.Context, files []job.Job
 		go func() {
 			defer wg.Done()
 			for file := range jobs {
-				if err := i.processSingleFile(ctxInt, &file); err != nil {
+				if err := i.processSingleFile(ctxT, &file); err != nil {
 					errs <- fmt.Errorf("file %s: %w", file.FilePath, err)
 				}
 			}
@@ -403,7 +404,7 @@ func (i *ImportFile) insertBatch(batch *Batch, header []string, row []string, fo
 		slog.Info("Batch insert contacts", "total", batch.Length, "force", force)
 		err = i.Repository.InsertBatch(batch.Contacts)
 		batch.Reset()
-		//time.Sleep(2 * time.Second) // Sleep to avoid DB overload
+		//time.Sleep(2 * time.Second)
 	}
 
 	return err
