@@ -93,4 +93,9 @@ reload-conf-worker:
 
 reload: reload-conf-api reload-conf-worker
 
+interrupt:
+	@echo "Send SIGINT to service $(SERVICE_NAME_WORKER)"; \
+	docker-compose exec $(SERVICE_NAME_WORKER) pkill -SIGINT $(SERVICE_NAME_WORKER)
+
+
 .PHONY: dev dev-api dev-worker build build-all build-api build-worker clean test test-local lint fmt run-api run-worker reload-conf-api reload-conf-worker reload

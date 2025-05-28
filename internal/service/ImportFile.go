@@ -2,6 +2,7 @@ package service
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -22,7 +23,7 @@ import (
 )
 
 type ImportFileService interface {
-	Import(file job.TempFileJob) error
+	Import(ctxInt context.Context, file job.TempFileJob) error
 }
 
 type ImportFile struct {
@@ -81,7 +82,7 @@ func (i *ImportFile) reset() {
 	i.Repository.Truncate()
 }
 
-func (i *ImportFile) Import(file *job.ImportJob) error {
+func (i *ImportFile) Import(ctxInt context.Context, file *job.ImportJob) error {
 	i.reset()
 	chunk, err := i.mustChunkFile(file)
 	if err != nil {
@@ -99,15 +100,15 @@ func (i *ImportFile) Import(file *job.ImportJob) error {
 			//return fmt.Errorf("error chunking file: %w", err)
 		}
 
-		return i.processSeveralFiles(files)
+		return i.processSeveralFiles(ctxInt, files)
 	}
 
 	slog.Info("Processing single file:")
-	return i.processSingleFile(files)
+	return i.processSingleFile(ctxInt, files)
 }
 
 // Parse CSV file
-func (i *ImportFile) processSingleFile(file *job.JobStat) error {
+func (i *ImportFile) processSingleFile(ctxInt context.Context, file *job.JobStat) error {
 	slog.Info("Processing current file:", "file", file.FilePath)
 
 	start := time.Now()
@@ -146,7 +147,13 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 		// Batch insert contacts
 		br := i.insertBatch(batch, headers, record, false)
 		if br != nil {
-			return &db.DbError{Err: fmt.Errorf("error while insert batch contacts: %w", br)}
+			return &db.DbError{Err: br}
+		}
+
+		select {
+		case <-ctxInt.Done():
+			return ctxInt.Err()
+		default:
 		}
 
 		file.TotalRows++
@@ -163,7 +170,7 @@ func (i *ImportFile) processSingleFile(file *job.JobStat) error {
 	return nil
 }
 
-func (i *ImportFile) processSeveralFiles(files []job.JobStat) error {
+func (i *ImportFile) processSeveralFiles(ctxInt context.Context, files []job.JobStat) error {
 	slog.Info("Processing several files", "files", files)
 
 	// Define max CPU usage to avoir using all CPU cores
@@ -185,8 +192,7 @@ func (i *ImportFile) processSeveralFiles(files []job.JobStat) error {
 		go func() {
 			defer wg.Done()
 			for file := range jobs {
-				if err := i.processSingleFile(&file); err != nil {
-					//slog.Error(fmt.Sprintf("Error processing file %s: %v", file.FilePath, err))
+				if err := i.processSingleFile(ctxInt, &file); err != nil {
 					errs <- fmt.Errorf("file %s: %w", file.FilePath, err)
 				}
 			}
@@ -358,7 +364,7 @@ func (i *ImportFile) createContactFromRow(header []string, row []string) (*model
 		if _, exists := r[key]; exists {
 			continue
 		} else {
-			return &model.Contact{}, fmt.Errorf("columns %s is missing", key)
+			return &model.Contact{}, fmt.Errorf("columns <%s> is missing", key)
 		}
 	}
 
@@ -397,6 +403,7 @@ func (i *ImportFile) insertBatch(batch *Batch, header []string, row []string, fo
 		slog.Info("Batch insert contacts", "total", batch.Length, "force", force)
 		err = i.Repository.InsertBatch(batch.Contacts)
 		batch.Reset()
+		//time.Sleep(2 * time.Second) // Sleep to avoid DB overload
 	}
 
 	return err

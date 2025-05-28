@@ -37,7 +37,7 @@ func (j *ImportJob) Remove() error {
 		return errors.New("cannot remove directory")
 	}
 
-	slog.Debug("Removing ImportJob", "file", j.FilePath)
+	slog.Info("Removing ImportJob", "file", j.FilePath)
 	return os.Remove(j.FilePath)
 }
 
@@ -52,7 +52,7 @@ func (j *JobStat) Remove() error {
 		return errors.New("cannot remove directory")
 	}
 
-	slog.Debug("Removing JobStat", "file", j.FilePath)
+	slog.Info("Removing JobStat", "file", j.FilePath)
 	return os.Remove(j.FilePath)
 }
 
