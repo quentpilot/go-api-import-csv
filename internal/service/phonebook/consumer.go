@@ -23,7 +23,7 @@ func NewPhonebookConsumer(a *config.ApmqConfig, h *config.HttpConfig, d *config.
 func (p *PhonebookHandler) Consume(ctx context.Context) {
 
 	for msg := range p.Queue.Consume(true) {
-		ctxT, cancel := context.WithTimeout(ctx, 30*time.Second)
+		ctxT, cancel := context.WithTimeout(ctx, p.AmqpConfig.Lifetime)
 		defer cancel()
 		slog.Debug("Message received from queue", "message", msg.Body)
 

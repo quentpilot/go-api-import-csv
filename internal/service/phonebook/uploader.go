@@ -112,7 +112,7 @@ func (c *ContactUploader) handleFiles(ctx context.Context, files []FilePart) err
 }
 
 func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error {
-	ctxT, cancel := context.WithTimeout(ctx, 10*time.Second)
+	ctxT, cancel := context.WithTimeout(ctx, c.HttpConfig.FileTimeout)
 	defer cancel()
 
 	slog.Info("Processing current file:", "file", file.FilePath)
