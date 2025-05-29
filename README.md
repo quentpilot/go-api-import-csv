@@ -53,14 +53,16 @@ When loading Docker containers, command `make reload` sends a signal to hot relo
 
 ### 💡 List of useful variables
 
-| Name                    | Default Value | Hot Reload          |
-| :---------------------- | :-----------  | :-----------------: |
-| LOG_LEVEL               |  INFO         |         ✅          |
-| AMQP_DSN                |  import_queue |         ❌          |
-| AMQP_QUEUE              |  INFO         |         ❌          |
-| HTTP_PORT               |  INFO         |         ❌          |
-| HTTP_MAX_CONTENT_LENTGH | 10485760      |         ❌          |
-| FILE_CHUNK_LIMIT        | 25000         |         ✅          |
+| Name                    | Default Value | Hot Reload          | Description
+| :---------------------- | :-----------  | :-----------------: | :-------------------
+| LOG_LEVEL               |  INFO         |         ✅          | Display log level
+| AMQP_DSN                |  import_queue |         ❌          | AMQP server auth
+| AMQP_QUEUE              |  INFO         |         ❌          | AMQP queue name
+| AMQP_LIFETIME           |  60           |         ✅          | AMPQ message timeout in seconds
+| HTTP_PORT               |  INFO         |         ❌          | Web API port
+| HTTP_MAX_CONTENT_LENTGH | 10485760      |         ❌          | Max API request size
+| FILE_CHUNK_LIMIT        | 25000         |         ✅          | Max rows by file (auto chunked if reached)
+| FILE_UPLOAD_TIMEOUT     | 30            |         ✅          | Timeout in seconds for each chunked file to upload
 
 
 ## 🕙 Roadmap

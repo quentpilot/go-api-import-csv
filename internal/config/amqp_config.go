@@ -1,6 +1,8 @@
 package config
 
-import "time"
+import (
+	"time"
+)
 
 type ApmqConfig struct {
 	Dsn      string        // AMQP connection string (default: "amqp://guest:guest@rabbitmq:5672/")
@@ -20,12 +22,12 @@ func (c *ApmqConfig) Load() {
 
 func (c *ApmqConfig) Validate() {
 	if c.Dsn == "" {
-		panic("ENV var AMQP_DSN must not be empty")
+		panicInvalidConfig("ENV var AMQP_DSN must not be empty")
 	}
 	if c.Queue == "" {
-		panic("ENV var AMQP_QUEUE must not be empty")
+		panicInvalidConfig("ENV var AMQP_QUEUE must not be empty")
 	}
 	if c.Lifetime <= 0 {
-		panic("ENV var AMQP_LIFETIME must be greater than zero")
+		panicInvalidConfig("ENV var AMQP_LIFETIME must be greater than zero")
 	}
 }

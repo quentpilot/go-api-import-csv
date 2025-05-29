@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -102,4 +103,10 @@ func GetFloat(key string, fallback float64) float64 {
 		return fallback
 	}
 	return f
+}
+
+// panicInvalidConfig logs an error message and panics with the same message.
+func panicInvalidConfig(message string) {
+	slog.Error(message)
+	panic(message)
 }

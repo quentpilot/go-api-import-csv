@@ -25,5 +25,5 @@ func main() {
 
 	self.Services.PhonebookUploader.Close()
 
-	self.Log().Info("...Shutdown Worker")
+	self.Log().Info("...Shutdown Phonebook Worker")
 }

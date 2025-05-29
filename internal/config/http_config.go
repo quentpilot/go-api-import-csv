@@ -18,26 +18,26 @@ func (c *HttpConfig) Load() {
 	c.MaxContentLength = int64(GetUint("HTTP_MAX_CONTENT_LENGTH", 10<<20))
 	c.FileChunkLimit = uint(GetUint("FILE_CHUNK_LIMIT", 25000))
 	c.BatchInsert = uint(GetUint("BATCH_INSERT", 5000))
-	c.FileTimeout = time.Duration(GetUint("UPLOAD_FILE_TIMEOUT", 30)) * time.Second
+	c.FileTimeout = time.Duration(GetUint("FILE_UPLOAD_TIMEOUT", 30)) * time.Second
 
 	c.validate()
 }
 
 func (c *HttpConfig) validate() {
 	if c.Port == "" {
-		panic("ENV var HTTP_PORT must not be empty")
+		panicInvalidConfig("ENV var HTTP_PORT must not be empty")
 	}
 	if c.MaxContentLength < 100 {
-		panic("ENV var HTTP_MAX_CONTENT_LENGTH must be greater than 100")
+		panicInvalidConfig("ENV var HTTP_MAX_CONTENT_LENGTH must be greater than 100")
 	}
 	if c.FileChunkLimit == 0 {
-		panic("ENV var FILE_CHUNK_LIMIT must be greater than zero")
+		panicInvalidConfig("ENV var FILE_CHUNK_LIMIT must be greater than zero")
 	}
 	if c.BatchInsert == 0 {
-		panic("ENV var BATCH_INSERT must be greater than zero")
+		panicInvalidConfig("ENV var BATCH_INSERT must be greater than zero")
 	}
 	if c.FileTimeout <= 0 {
-		panic("ENV var UPLOAD_FILE_TIMEOUT must be greater than zero")
+		panicInvalidConfig("ENV var FILE_UPLOAD_TIMEOUT must be greater than zero")
 	}
 
 }
