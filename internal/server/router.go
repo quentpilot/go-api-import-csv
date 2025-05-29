@@ -4,7 +4,7 @@ import (
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/handlers"
 	"go-csv-import/internal/middleware"
-	"go-csv-import/internal/service"
+	"go-csv-import/internal/service/phonebook"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +19,7 @@ type UploadRouter struct {
 }
 
 func (r UploadRouter) Load(s *gin.Engine) {
-	publisher := service.NewImportFileQueuePublisher(r.AmqpConfig, r.HttpConfig)
+	publisher := phonebook.NewPhonebookPublisher(r.AmqpConfig, r.HttpConfig)
 
 	s.POST("/upload", middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(publisher))
 }

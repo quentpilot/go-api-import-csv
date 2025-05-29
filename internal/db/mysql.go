@@ -36,14 +36,3 @@ func AutoMigrate() {
 		DB.AutoMigrate(&model.Contact{})
 	}
 }
-
-type DbError struct {
-	Err error
-}
-
-func (e *DbError) Error() string {
-	return "database error: " + e.Err.Error()
-}
-func (e *DbError) Unwrap() error {
-	return e.Err
-}

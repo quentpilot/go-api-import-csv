@@ -1,8 +1,7 @@
 package handlers
 
 import (
-	"go-csv-import/internal/job"
-	"go-csv-import/internal/service"
+	"go-csv-import/internal/service/phonebook"
 	"go-csv-import/internal/validation"
 	"log/slog"
 	"net/http"
@@ -15,8 +14,8 @@ type JobPublisher interface {
 	PublishImportJob(path string, maxRows int) error
 }
 
-// Upload file webservice
-func Upload(publisher *service.ImportFileQueue) gin.HandlerFunc {
+// Upload contacts file webservice
+func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 	// TODO: Check file size to limit
 	// TODO: handle Go channels to get errors and limit go routine for a lot of files
 	return func(c *gin.Context) {
@@ -43,13 +42,13 @@ func Upload(publisher *service.ImportFileQueue) gin.HandlerFunc {
 		}
 
 		// Send file path to RabbitMQ
-		job := &job.ImportJob{
+		job := &phonebook.FileMessage{
 			FilePath: dst,
 			MaxRows:  int(publisher.HttpConfig.FileChunkLimit),
 		}
 
 		if err := publisher.Publish(job); err != nil {
-			slog.Error("Error publishing job to RabbitMQ", "error", err)
+			slog.Error("Error publishing message to queue", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
 			return
 		}

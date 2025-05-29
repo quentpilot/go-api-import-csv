@@ -2,15 +2,16 @@ package container
 
 import (
 	"go-csv-import/internal/config"
-	"go-csv-import/internal/service"
+	"go-csv-import/internal/service/phonebook"
 )
 
 type Services struct {
-	ImportFileQueue *service.ImportFileQueue
+	PhonebookUploader *phonebook.PhonebookHandler
 }
 
+// LoadServices initializes and returns the services for the application.
 func LoadServices(a *config.AppConfig) *Services {
 	return &Services{
-		ImportFileQueue: service.NewImportFileQueueConsumer(&a.Amqp, &a.Http, &a.Db),
+		PhonebookUploader: phonebook.NewPhonebookConsumer(&a.Amqp, &a.Http, &a.Db),
 	}
 }
