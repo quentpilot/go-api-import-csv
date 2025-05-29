@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"io"
 	"log"
 	"log/slog"
@@ -57,7 +58,8 @@ func New(name string, level string, useJSON bool) (*slog.Logger, error) {
 	if useJSON {
 		handler = slog.NewJSONHandler(output, &options)
 	} else {
-		handler = slog.NewTextHandler(output, &options)
+		//handler = slog.NewTextHandler(output, &options)
+		handler = newTextHandler(output, &options)
 	}
 
 	logger := slog.New(handler)
@@ -65,17 +67,68 @@ func New(name string, level string, useJSON bool) (*slog.Logger, error) {
 	return logger, nil
 }
 
+func newTextHandler(output io.Writer, opts *slog.HandlerOptions) *slog.TextHandler {
+	levelNames := map[slog.Level]string{
+		slog.LevelDebug:        "DEBUG",
+		slog.LevelInfo:         "INFO",
+		slog.LevelWarn:         "WARN",
+		slog.LevelError:        "ERROR",
+		convLogLevel("notice"): "NOTICE",
+		convLogLevel("trace"):  "TRACE",
+	}
+
+	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
+		Level: opts.Level,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.LevelKey {
+				switch v := a.Value.Any().(type) {
+				case slog.Level:
+					if name, ok := levelNames[v]; ok {
+						return slog.String(slog.LevelKey, name)
+					}
+				case string:
+					// déjà une string, on laisse tel quel ou remap si besoin
+					return a
+				default:
+					// fallback : garder l’attribut original
+					return a
+				}
+			}
+			return a
+		}})
+
+	return handler
+}
+
+func Trace(msg string, args ...any) {
+	slog.Log(context.Background(), convLogLevel("trace"), msg, args...)
+}
+
+func Notice(msg string, args ...any) {
+	slog.Log(context.Background(), convLogLevel("notice"), msg, args...)
+}
+
+func Fatal(msg string, args ...any) {
+	slog.Log(context.Background(), convLogLevel("fatal"), msg, args...)
+}
+
 // Converts a string log level to slog.Level integer value
 func convLogLevel(level string) slog.Level {
 	level = strings.ToLower(level)
 
 	switch level {
+	case "trace":
+		return slog.Level(-8)
 	case "debug":
 		return slog.LevelDebug
+	case "notice":
+		return slog.Level(2)
 	case "warn":
 		return slog.LevelWarn
 	case "error":
 		return slog.LevelError
+	case "fatal":
+		return slog.Level(10)
 	default:
 		return slog.LevelInfo
 	}

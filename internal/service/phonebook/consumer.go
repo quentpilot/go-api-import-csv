@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"go-csv-import/internal/amqp"
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/logger"
 	"log/slog"
 	"time"
 )
@@ -37,12 +38,12 @@ func (p *PhonebookHandler) Consume(ctx context.Context) {
 		}
 
 		start := time.Now()
-		slog.Info("Treating file", "file", file.FilePath)
+		logger.Notice("Treating file", "file", file.FilePath)
 
 		if err := p.uploader.Upload(ctxT, file); err != nil {
 			p.printTypedErrors(err, file)
 		} else {
-			slog.Info("File successful treated", "file", file.FilePath, "time", time.Since(start))
+			logger.Notice("File successful treated", "file", file.FilePath, "time", time.Since(start))
 		}
 
 		file.Remove()
