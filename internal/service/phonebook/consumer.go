@@ -47,6 +47,7 @@ func (p *PhonebookHandler) Consume(ctx context.Context) {
 
 		file.Remove()
 		slog.Info("Message acknowledged")
+
 		select {
 		case <-ctxT.Done():
 			if ctxT.Err() != nil {

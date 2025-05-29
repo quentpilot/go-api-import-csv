@@ -23,16 +23,7 @@ func main() {
 
 	self.Services.PhonebookUploader.Consume(ctx)
 
-	/* if err := ctx.Err(); err != nil {
-		switch err {
-		case context.Canceled:
-			slog.Warn("Worker annulé")
-		case context.DeadlineExceeded:
-			slog.Warn("Délai dépassé")
-		default:
-			slog.Warn("Annulation inconnue")
-		}
-	} */
+	self.Services.PhonebookUploader.Close()
 
 	self.Log().Info("...Shutdown Worker")
 }

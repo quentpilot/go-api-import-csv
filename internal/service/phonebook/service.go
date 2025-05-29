@@ -4,6 +4,8 @@ import (
 	"context"
 	"go-csv-import/internal/amqp"
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/db"
+	"log/slog"
 )
 
 type PhonebookService interface {
@@ -16,4 +18,20 @@ type PhonebookHandler struct {
 	HttpConfig *config.HttpConfig
 	Queue      *amqp.AmqpQueue
 	uploader   *ContactUploader
+}
+
+func (p *PhonebookHandler) Close() error {
+	err := db.Close()
+	if err != nil {
+		slog.Warn("Error closing database connection", "error", err)
+	}
+
+	if p.Queue != nil {
+		err = p.Queue.Close()
+		if err != nil {
+			slog.Warn("Error closing AMQP queue", "error", err)
+		}
+	}
+
+	return err
 }

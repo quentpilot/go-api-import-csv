@@ -10,10 +10,10 @@ import (
 )
 
 var DB *gorm.DB
-var connected bool
+var Connected bool
 
 func Connect(c *config.DbConfig) error {
-	connected = false
+	Connected = false
 	var err error
 	DB, err = gorm.Open(mysql.Open(c.Dsn), &gorm.Config{})
 	if err != nil {
@@ -25,14 +25,25 @@ func Connect(c *config.DbConfig) error {
 		sqlDB.SetMaxIdleConns(10)
 		sqlDB.SetMaxOpenConns(100)
 		sqlDB.SetConnMaxLifetime(time.Hour)
-		connected = true
+		Connected = true
 	}
 
 	return err
 }
 
+func Close() error {
+	if Connected {
+		sqlDB, err := DB.DB()
+		if err != nil {
+			return err
+		}
+		return sqlDB.Close()
+	}
+	return nil
+}
+
 func AutoMigrate() {
-	if connected {
+	if Connected {
 		DB.AutoMigrate(&model.Contact{})
 	}
 }
