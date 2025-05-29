@@ -4,9 +4,9 @@ import "time"
 
 type HttpConfig struct {
 	Port             string        // Log level (default: ":8080")
-	MaxContentLength int64         // Max request size for a request in byte (default: "10485760" - 10 Mo)
-	FileChunkLimit   uint          // Split uploaded file after reached number of rows limit (default: "25000")
-	BatchInsert      uint          // Number of contact rows inserted by query (default: "5000")
+	MaxContentLength int64         // Max request size for a request in byte (default: "10485760" -> 10 Mo)
+	FileChunkLimit   uint          // Split uploaded file after reached number of rows limit (default: "6000")
+	BatchInsert      uint          // Number of contact rows inserted by query (default: "3000")
 	FileTimeout      time.Duration // Lifetime in seconds for file processing (default: 30)
 }
 
@@ -16,8 +16,8 @@ func (c *HttpConfig) Load() {
 	port := Get("HTTP_PORT", "8080")
 	c.Port = ":" + port
 	c.MaxContentLength = int64(GetUint("HTTP_MAX_CONTENT_LENGTH", 10<<20))
-	c.FileChunkLimit = uint(GetUint("FILE_CHUNK_LIMIT", 25000))
-	c.BatchInsert = uint(GetUint("BATCH_INSERT", 5000))
+	c.FileChunkLimit = uint(GetUint("FILE_CHUNK_LIMIT", 6000))
+	c.BatchInsert = uint(GetUint("BATCH_INSERT", 3000))
 	c.FileTimeout = time.Duration(GetUint("FILE_UPLOAD_TIMEOUT", 30)) * time.Second
 
 	c.validate()

@@ -58,7 +58,7 @@ func (c *ContactUploader) handleBatchInsert(batch *Batch, header []string, row [
 
 	if batch.IsReached(c.HttpConfig.BatchInsert) || (force && batch.Length > 0) {
 		//time.Sleep(6 * time.Second)
-		slog.Info("Batch insert contacts", "total", batch.Length, "force", force)
+		slog.Debug("Batch insert contacts", "total", batch.Length, "force", force)
 		err = c.Repository.InsertBatch(batch.Contacts)
 		batch.Reset()
 	}

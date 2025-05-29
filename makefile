@@ -3,6 +3,7 @@ PROJECT_NAME := go-api-import-csv
 SERVICE_NAME_API := api
 SERVICE_NAME_WORKER := worker
 SERVICE_NAME_AMQP := rabbitmq
+CSV_LINES ?= 1000
 
 # Run API in development mode
 dev-api:
@@ -97,5 +98,8 @@ interrupt:
 	@echo "Send SIGINT to service $(SERVICE_NAME_WORKER)"; \
 	docker-compose exec $(SERVICE_NAME_WORKER) pkill -SIGINT $(SERVICE_NAME_WORKER)
 
+generate-csv:
+	go run ./cmd/csv/main.go --lines $(CSV_LINES)
 
-.PHONY: dev dev-api dev-worker build build-all build-api build-worker clean test test-local lint fmt run-api run-worker reload-conf-api reload-conf-worker reload
+
+.PHONY: dev dev-api dev-worker build build-all build-api build-worker clean test test-local lint fmt run-api run-worker reload-conf-api reload-conf-worker reload generate-csv start-api start-worker stop-api stop-worker restart-api restart-worker start stop build-binary-api build-binary-worker build-binary

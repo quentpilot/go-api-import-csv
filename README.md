@@ -43,6 +43,13 @@ CSV file with 100 000 rows
 curl --location 'http://localhost:8080/upload' --form 'file=@testdata/contacts_100k.csv'
 ```
 
+### 🧠 Create your own CSV
+By using command `make generate-csv CSV_LINES=1_000_000`,
+
+this will create file `testdata/gen_contact_1000000.csv` with 1M of rows.
+
+Then, you can use it like above cURL examples.
+
 ## ⚙️ Environment
 A `.env` file allows to set default app configuration.
 
@@ -61,8 +68,9 @@ When loading Docker containers, command `make reload` sends a signal to hot relo
 | AMQP_LIFETIME           |  60           |         ✅          | AMPQ message timeout in seconds
 | HTTP_PORT               |  INFO         |         ❌          | Web API port
 | HTTP_MAX_CONTENT_LENTGH | 10485760      |         ❌          | Max API request size
-| FILE_CHUNK_LIMIT        | 25000         |         ✅          | Max rows by file (auto chunked if reached)
+| FILE_CHUNK_LIMIT        | 6000          |         ✅          | Max rows by file (auto chunked if reached)
 | FILE_UPLOAD_TIMEOUT     | 30            |         ✅          | Timeout in seconds for each chunked file to upload
+| BATCH_INSERT            | 3000          |         ✅          | Number of rows by SQL INSERT
 
 
 ## 🕙 Roadmap

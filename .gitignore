@@ -1,4 +1,9 @@
-bin/
+bin/*
+!bin/.gitkeep
+
 logs/*
 !logs/.gitkeep
+
 .env
+
+testdata/gen_*
