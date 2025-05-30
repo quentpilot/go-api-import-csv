@@ -1,7 +1,7 @@
 package server
 
 import (
-	"log/slog"
+	"go-csv-import/internal/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +22,7 @@ func (s *Server) LoadRoutes(r HttpRouter) {
 
 func (s *Server) Run(addr ...string) {
 	url := "http://localhost" + addr[0]
-	slog.Info("API Server runs on " + url)
+	logger.Info("API Server runs on " + url)
 
 	s.Engine.Run(addr...)
 }

@@ -5,6 +5,7 @@ import (
 	"go-csv-import/internal/amqp"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/db"
+	"go-csv-import/internal/logger"
 	"log/slog"
 )
 
@@ -20,6 +21,7 @@ type PhonebookHandler struct {
 	uploader   *ContactUploader
 }
 
+// Close closes the AMQP queue and database connection.
 func (p *PhonebookHandler) Close() error {
 	err := db.Close()
 	if err != nil {
@@ -32,6 +34,8 @@ func (p *PhonebookHandler) Close() error {
 			slog.Warn("Error closing AMQP queue", "error", err)
 		}
 	}
+
+	logger.Trace("Phonebook service closed", "error", err)
 
 	return err
 }

@@ -36,15 +36,15 @@ func createFile(lines uint) {
 	defer file.Close()
 	color.Blue("CSV file created: %s\n", filePath)
 
-	writeFile(file, lines)
+	writeFile(file, lines, 1000)
 }
 
-func writeFile(file *os.File, lines uint) {
+func writeFile(file *os.File, lines uint, batchSize uint) {
 	writer := csv.NewWriter(file)
 	defer writer.Flush()
 	writer.Comma = ';'
 
-	batch := make([][]string, 0, 1000) // Batch size of 1000
+	batch := make([][]string, 0, batchSize) // Batch size of 1000
 
 	// Write CSV header
 	header := []string{"Phone", "Lastname", "Firstname"}
@@ -64,7 +64,7 @@ func writeFile(file *os.File, lines uint) {
 		}
 		batch = append(batch, row)
 
-		if len(batch) >= 1000 {
+		if len(batch) >= int(batchSize) {
 			writer.WriteAll(batch)
 			batch = batch[:0] // Reset the batch
 		}

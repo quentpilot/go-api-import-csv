@@ -11,7 +11,7 @@ func main() {
 	self := bootstrap.Load(&config.AppConfig{
 		LoggerName: "api",
 	})
-	self.Services = container.LoadServices(self.Conf)
+	self.Services = container.LoadApiServices(self.Conf)
 	self.WatchForReload()
 
 	s := server.New()
@@ -19,6 +19,7 @@ func main() {
 	s.LoadRoutes(server.UploadRouter{
 		HttpConfig: &self.Conf.Http,
 		AmqpConfig: &self.Conf.Amqp,
+		Services:   self.Services,
 	})
 
 	s.Run(self.HttpConfig().Port)

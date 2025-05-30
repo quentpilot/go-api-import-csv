@@ -2,6 +2,7 @@ package repository
 
 import (
 	"go-csv-import/internal/db"
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/model"
 )
 
@@ -26,5 +27,8 @@ func (r *contactRepository) InsertBatch(c []*model.Contact) error {
 }
 
 func (r *contactRepository) Truncate() error {
-	return db.DB.Exec("TRUNCATE TABLE contacts").Error
+	logger.Trace("Truncating contacts table...")
+	err := db.DB.Exec("TRUNCATE TABLE contacts").Error
+	logger.Trace("...Contacts table trucated")
+	return err
 }

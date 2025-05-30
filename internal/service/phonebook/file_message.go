@@ -2,7 +2,7 @@ package phonebook
 
 import (
 	"errors"
-	"log/slog"
+	"go-csv-import/internal/logger"
 	"os"
 )
 
@@ -23,6 +23,6 @@ func (j *FileMessage) Remove() error {
 		return errors.New("cannot remove directory")
 	}
 
-	slog.Info("Removing FileMessage", "file", j.FilePath)
+	logger.Debug("Removing FileMessage", "file", j.FilePath)
 	return os.Remove(j.FilePath)
 }

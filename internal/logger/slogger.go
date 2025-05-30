@@ -10,8 +10,9 @@ import (
 	"strings"
 )
 
-// InitDefault initialize the default logger file name "./logs/root.log"
-func InitDefault(level string, useJSON bool) (*slog.Logger, error) {
+// NewDefault initialize the default logger file name "./logs/root.log".
+// It overrides the default slog logger with a new one.
+func NewDefault(level string, useJSON bool) (*slog.Logger, error) {
 	l, err := New("root", level, useJSON)
 	if err != nil {
 		return nil, err
@@ -20,8 +21,9 @@ func InitDefault(level string, useJSON bool) (*slog.Logger, error) {
 	return l, nil
 }
 
-// InitDefault initialize the wanted logger file name "./logs/<name>.log"
-func InitCurrent(name string, level string, useJSON bool) (*slog.Logger, error) {
+// NewCurrent initialize the wanted logger file name "./logs/<name>.log"
+// It overrides the default slog logger with a new one.
+func NewCurrent(name string, level string, useJSON bool) (*slog.Logger, error) {
 	l, err := New(name, level, useJSON)
 	if err != nil {
 		return nil, err
@@ -30,7 +32,8 @@ func InitCurrent(name string, level string, useJSON bool) (*slog.Logger, error) 
 	return l, nil
 }
 
-// New returns a dedicated logger with a separate file
+// New returns a dedicated logger with a separate file. It write both to STDOUT and a file.
+// It overrides the default slog logger with a new one.
 func New(name string, level string, useJSON bool) (*slog.Logger, error) {
 	log.Println("New slog handlers:", name, level)
 	logsDir := "logs"
@@ -53,7 +56,7 @@ func New(name string, level string, useJSON bool) (*slog.Logger, error) {
 	var handler slog.Handler
 	var options slog.HandlerOptions
 
-	options.Level = convLogLevel(level)
+	options.Level = ConvLogLevel(level)
 
 	if useJSON {
 		handler = slog.NewJSONHandler(output, &options)
@@ -67,14 +70,15 @@ func New(name string, level string, useJSON bool) (*slog.Logger, error) {
 	return logger, nil
 }
 
+// newTextHandler creates a new slog.TextHandler with custom level names.
 func newTextHandler(output io.Writer, opts *slog.HandlerOptions) *slog.TextHandler {
 	levelNames := map[slog.Level]string{
 		slog.LevelDebug:        "DEBUG",
 		slog.LevelInfo:         "INFO",
 		slog.LevelWarn:         "WARN",
 		slog.LevelError:        "ERROR",
-		convLogLevel("notice"): "NOTICE",
-		convLogLevel("trace"):  "TRACE",
+		ConvLogLevel("notice"): "NOTICE",
+		ConvLogLevel("trace"):  "TRACE",
 	}
 
 	handler := slog.NewTextHandler(output, &slog.HandlerOptions{
@@ -87,10 +91,10 @@ func newTextHandler(output io.Writer, opts *slog.HandlerOptions) *slog.TextHandl
 						return slog.String(slog.LevelKey, name)
 					}
 				case string:
-					// déjà une string, on laisse tel quel ou remap si besoin
+					// already a string, just return it
 					return a
 				default:
-					// fallback : garder l’attribut original
+					// fallback : keep the original value
 					return a
 				}
 			}
@@ -101,19 +105,35 @@ func newTextHandler(output io.Writer, opts *slog.HandlerOptions) *slog.TextHandl
 }
 
 func Trace(msg string, args ...any) {
-	slog.Log(context.Background(), convLogLevel("trace"), msg, args...)
+	slog.Log(context.Background(), ConvLogLevel("trace"), msg, args...)
+}
+
+func Debug(msg string, args ...any) {
+	slog.Log(context.Background(), ConvLogLevel("debug"), msg, args...)
 }
 
 func Notice(msg string, args ...any) {
-	slog.Log(context.Background(), convLogLevel("notice"), msg, args...)
+	slog.Log(context.Background(), ConvLogLevel("notice"), msg, args...)
+}
+
+func Info(msg string, args ...any) {
+	slog.Log(context.Background(), ConvLogLevel("info"), msg, args...)
+}
+
+func Warn(msg string, args ...any) {
+	slog.Log(context.Background(), ConvLogLevel("warn"), msg, args...)
+}
+
+func Error(msg string, args ...any) {
+	slog.Log(context.Background(), ConvLogLevel("error"), msg, args...)
 }
 
 func Fatal(msg string, args ...any) {
-	slog.Log(context.Background(), convLogLevel("fatal"), msg, args...)
+	slog.Log(context.Background(), ConvLogLevel("fatal"), msg, args...)
 }
 
 // Converts a string log level to slog.Level integer value
-func convLogLevel(level string) slog.Level {
+func ConvLogLevel(level string) slog.Level {
 	level = strings.ToLower(level)
 
 	switch level {
@@ -123,7 +143,7 @@ func convLogLevel(level string) slog.Level {
 		return slog.LevelDebug
 	case "notice":
 		return slog.Level(2)
-	case "warn":
+	case "warning", "warn":
 		return slog.LevelWarn
 	case "error":
 		return slog.LevelError

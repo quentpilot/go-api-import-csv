@@ -6,7 +6,6 @@ import (
 	"go-csv-import/internal/amqp"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/logger"
-	"log/slog"
 	"time"
 )
 
@@ -26,40 +25,40 @@ func (p *PhonebookHandler) Consume(ctx context.Context) {
 	for msg := range p.Queue.Consume(true) {
 		ctxT, cancel := context.WithTimeout(ctx, p.AmqpConfig.Lifetime)
 		defer cancel()
-		slog.Debug("Message received from queue", "message", msg.Body)
+		logger.Trace("Message received from queue", "message", msg.Body)
 
 		// Decode the message body into a FileMessage struct.
 		var file *FileMessage
 		message := amqp.NewJsonMessageDecoder(msg.Body)
 		err := message.Decode(&file)
 		if err != nil {
-			slog.Error("Decode AMQP message", "body", msg.Body, "error", err, "type", fmt.Sprintf("%T", err))
+			logger.Error("Decode AMQP message", "body", msg.Body, "error", err, "type", fmt.Sprintf("%T", err))
 			continue
 		}
 
 		start := time.Now()
-		logger.Notice("Treating file", "file", file.FilePath)
+		logger.Info("Treating file", "file", file.FilePath)
 
 		if err := p.uploader.Upload(ctxT, file); err != nil {
 			p.printTypedErrors(err, file)
 		} else {
-			logger.Notice("File successful treated", "file", file.FilePath, "time", time.Since(start))
+			logger.Info("File successful treated", "file", file.FilePath, "time", time.Since(start))
 		}
 
 		file.Remove()
-		slog.Info("Message acknowledged")
+		logger.Trace("Message acknowledged")
 
 		select {
 		case <-ctxT.Done():
 			if ctxT.Err() != nil {
 				switch ctxT.Err() {
 				case context.Canceled:
-					slog.Warn("Worker cancelled")
+					logger.Warn("Worker cancelled")
 					return
 				case context.DeadlineExceeded:
-					slog.Warn("Deadline exceeded")
+					logger.Warn("Deadline exceeded")
 				default:
-					slog.Warn("Unknown cancellation reason")
+					logger.Warn("Unknown cancellation reason")
 					return
 				}
 			}

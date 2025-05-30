@@ -2,6 +2,7 @@ package container
 
 import (
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/service/phonebook"
 )
 
@@ -10,8 +11,22 @@ type Services struct {
 }
 
 // LoadServices initializes and returns the services for the application.
-func LoadServices(a *config.AppConfig) *Services {
-	return &Services{
+func LoadConsumerServices(a *config.AppConfig) *Services {
+	s := &Services{
 		PhonebookUploader: phonebook.NewPhonebookConsumer(&a.Amqp, &a.Http, &a.Db),
 	}
+
+	logger.Trace("Consumer Services Loaded")
+
+	return s
+}
+
+func LoadApiServices(a *config.AppConfig) *Services {
+	s := &Services{
+		PhonebookUploader: phonebook.NewPhonebookPublisher(&a.Amqp, &a.Http),
+	}
+
+	logger.Trace("API Services Loaded")
+
+	return s
 }

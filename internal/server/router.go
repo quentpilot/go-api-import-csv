@@ -2,9 +2,10 @@ package server
 
 import (
 	"go-csv-import/internal/config"
+	"go-csv-import/internal/container"
 	"go-csv-import/internal/handlers"
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/middleware"
-	"go-csv-import/internal/service/phonebook"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,10 +17,13 @@ type HttpRouter interface {
 type UploadRouter struct {
 	HttpConfig *config.HttpConfig
 	AmqpConfig *config.ApmqConfig
+	Services   *container.Services
 }
 
 func (r UploadRouter) Load(s *gin.Engine) {
-	publisher := phonebook.NewPhonebookPublisher(r.AmqpConfig, r.HttpConfig)
+	/* publisher := phonebook.NewPhonebookPublisher(r.AmqpConfig, r.HttpConfig)
+	logger.Debug("Phonebook publisher initialized") */
 
-	s.POST("/upload", middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(publisher))
+	s.POST("/upload", middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(r.Services.PhonebookUploader))
+	logger.Debug("Upload route registered")
 }

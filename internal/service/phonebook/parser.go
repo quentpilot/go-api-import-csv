@@ -3,8 +3,8 @@ package phonebook
 import (
 	"errors"
 	"fmt"
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/model"
-	"log/slog"
 )
 
 func (c *ContactUploader) combine(header []string, row []string) (map[string]string, error) {
@@ -17,6 +17,7 @@ func (c *ContactUploader) combine(header []string, row []string) (map[string]str
 		r[k] = row[i]
 	}
 
+	logger.Trace("Row combined", "row", fmt.Sprintf("%#v", r))
 	return r, nil
 }
 
@@ -25,7 +26,6 @@ func (c *ContactUploader) createContactFromRow(header []string, row []string) (*
 	if err != nil {
 		return &model.Contact{}, err
 	}
-	slog.Debug("Combine row result", "combine", fmt.Sprintf("%#v", r))
 
 	required := []string{"Phone", "Firstname", "Lastname"}
 	for i := 0; i < len(required); i++ {
@@ -51,14 +51,14 @@ func (c *ContactUploader) handleBatchInsert(batch *Batch, header []string, row [
 		if err != nil {
 			return err
 		}
-		slog.Debug("Model created", "contact", fmt.Sprintf("%#v", c))
+		logger.Trace("Contact model created", "contact", fmt.Sprintf("%#v", c))
 
 		batch.Append(c)
 	}
 
 	if batch.IsReached(c.HttpConfig.BatchInsert) || (force && batch.Length > 0) {
 		//time.Sleep(6 * time.Second)
-		slog.Debug("Batch insert contacts", "total", batch.Length, "force", force)
+		logger.Trace("Batch insert contacts", "total", batch.Length, "force", force)
 		err = c.Repository.InsertBatch(batch.Contacts)
 		batch.Reset()
 	}

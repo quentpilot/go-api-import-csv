@@ -1,6 +1,9 @@
 package phonebook
 
-import "go-csv-import/internal/model"
+import (
+	"go-csv-import/internal/logger"
+	"go-csv-import/internal/model"
+)
 
 // BatchHandler defines the interface for handling batches of data
 type BatchHandler interface {
@@ -15,17 +18,20 @@ type Batch struct {
 }
 
 func NewBatch() *Batch {
+	logger.Trace("Creating a new batch")
 	return &Batch{}
 }
 
 func (b *Batch) Reset() {
 	b.Contacts = []*model.Contact{}
 	b.Length = 0
+	logger.Trace("Batch reset")
 }
 
 func (b *Batch) Append(c *model.Contact) {
 	b.Contacts = append(b.Contacts, c)
 	b.Length++
+	logger.Trace("Contact appended to batch")
 }
 
 func (b *Batch) IsReached(maxBatch uint) bool {

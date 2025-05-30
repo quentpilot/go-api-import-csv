@@ -165,7 +165,7 @@ func InitLogger(name string) error {
 	return nil
 }
 
-func Info(v ...any) {
+func Inf(v ...any) {
 	prefix := "[INFO]"
 	if colorEnabled {
 		log.Println(color.HiCyanString(prefix), fmt.Sprint(v...))

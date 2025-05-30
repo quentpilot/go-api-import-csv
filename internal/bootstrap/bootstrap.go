@@ -29,7 +29,7 @@ func iniLogger(c *config.AppConfig) *slog.Logger {
 		c.LoggerName = "root"
 	}
 
-	l, err := logger.InitCurrent(c.LoggerName, c.Logger.Level, false)
+	l, err := logger.NewCurrent(c.LoggerName, c.Logger.Level, false)
 	if err != nil {
 		panic(err)
 	}
@@ -53,5 +53,6 @@ func initDatabase(c *config.AppConfig) {
 			panic(err)
 		}
 		db.AutoMigrate()
+		logger.Trace("Database connection established")
 	}
 }

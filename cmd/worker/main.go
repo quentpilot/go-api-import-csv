@@ -5,6 +5,7 @@ import (
 	"go-csv-import/internal/bootstrap"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/container"
+	"go-csv-import/internal/logger"
 	"os"
 	"os/signal"
 )
@@ -14,16 +15,17 @@ func main() {
 		LoggerName: "worker",
 		UseDb:      true,
 	})
-	self.Services = container.LoadServices(self.Conf)
+	self.Services = container.LoadConsumerServices(self.Conf)
 	self.WatchForReload()
-	self.Log().Info("Phonebook worker is listening...")
+	logger.Info("Phonebook worker is listening...")
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
+	logger.Trace("Signal context created", "signal", "Interrupt")
 
 	self.Services.PhonebookUploader.Consume(ctx)
 
 	self.Services.PhonebookUploader.Close()
 
-	self.Log().Info("...Shutdown Phonebook Worker")
+	logger.Info("...Shutdown Phonebook Worker")
 }

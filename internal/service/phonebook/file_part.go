@@ -3,7 +3,7 @@ package phonebook
 import (
 	"errors"
 	"fmt"
-	"log/slog"
+	"go-csv-import/internal/logger"
 	"os"
 	"time"
 )
@@ -26,7 +26,7 @@ func (f *FilePart) Remove() error {
 		return errors.New("cannot remove directory")
 	}
 
-	slog.Info("Removing FilePart", "file", f.FilePath)
+	logger.Debug("Removing FilePart", "file", f.FilePath)
 	return os.Remove(f.FilePath)
 }
 

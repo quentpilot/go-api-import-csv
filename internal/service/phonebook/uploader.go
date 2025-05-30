@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/db"
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/repository"
 	"io"
-	"log/slog"
 	"os"
 	"runtime"
 	"sync"
@@ -50,7 +50,7 @@ func (c *ContactUploader) Upload(ctx context.Context, file *FileMessage) error {
 	if chunk {
 		files, err = c.chunkFile(file)
 		if err != nil {
-			return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("error chunking file: %w", err)}
+			return NewFileError(file.FilePath, fmt.Errorf("error chunking file: %w", err))
 		}
 	}
 
@@ -58,13 +58,15 @@ func (c *ContactUploader) Upload(ctx context.Context, file *FileMessage) error {
 }
 
 func (c *ContactUploader) handleFiles(ctx context.Context, files []FilePart) error {
-	slog.Debug("Processing several files", "files", files)
+	logger.Debug("Processing chunked files")
+	logger.Trace("Files to process", "files", fmt.Sprintf("%#v", files))
 
 	// Define max CPU usage to avoir using all CPU cores
 	maxCPU := runtime.NumCPU()
 	if maxCPU > 4 {
 		maxCPU -= 2
 	}
+	logger.Debug("Setting max CPU usage", "maxCPU", maxCPU)
 	runtime.GOMAXPROCS(maxCPU)
 
 	jobs := make(chan FilePart)
@@ -73,6 +75,7 @@ func (c *ContactUploader) handleFiles(ctx context.Context, files []FilePart) err
 
 	var wg sync.WaitGroup
 
+	logger.Trace("Launching workers", "workers", maxCPU)
 	// Consume files
 	for w := 0; w < maxCPU; w++ {
 		wg.Add(1)
@@ -83,12 +86,13 @@ func (c *ContactUploader) handleFiles(ctx context.Context, files []FilePart) err
 					errs <- fmt.Errorf("file %s: %w", file.FilePath, err)
 					continue
 				}
-				slog.Info(file.PrintStat())
+				logger.Debug(file.PrintStat())
 			}
 
 		}()
 	}
 
+	logger.Trace("Dispatching files to workers channels")
 	// Send files to jobs channel
 	go func() {
 		for _, file := range files {
@@ -97,12 +101,14 @@ func (c *ContactUploader) handleFiles(ctx context.Context, files []FilePart) err
 		close(jobs)
 	}()
 
+	logger.Trace("Waiting for workers to finish")
 	// Wait for workers and close errors channel
 	go func() {
 		wg.Wait()
 		close(errs)
 	}()
 
+	logger.Trace("Collecting errors from workers")
 	// Collect and join errors
 	for err := range errs {
 		aErrs = multierror.Append(aErrs, err)
@@ -112,10 +118,10 @@ func (c *ContactUploader) handleFiles(ctx context.Context, files []FilePart) err
 }
 
 func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error {
+	logger.Debug("Start processing routine file", "file", file.FilePath)
+
 	ctxT, cancel := context.WithTimeout(ctx, c.HttpConfig.FileTimeout)
 	defer cancel()
-
-	slog.Info("Processing current file:", "file", file.FilePath)
 	defer file.Remove()
 
 	start := time.Now()
@@ -135,7 +141,7 @@ func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error 
 	if err != nil {
 		return err
 	}
-	slog.Debug("CSV Headers:", "headers", headers)
+	logger.Trace("CSV Headers", "headers", headers)
 
 	batch := NewBatch()
 
@@ -154,6 +160,7 @@ func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error 
 		if err != nil {
 			return NewFileError(file.FilePath, fmt.Errorf("failed to read row: %w", err))
 		}
+		logger.Trace("RAW line", "line", fmt.Sprintf("%#v", record))
 
 		//return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("simulate error file")}
 
@@ -173,5 +180,6 @@ func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error 
 		return db.NewDbError(fmt.Errorf("error while forcing insert batch contacts: %w", br))
 	}
 
+	logger.Debug("End processing routine file", "file", file.FilePath)
 	return nil
 }
