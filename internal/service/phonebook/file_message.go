@@ -8,6 +8,7 @@ import (
 
 // FileMessage is a structure to transport message information through RabbitMQ
 type FileMessage struct {
+	Uuid     string `json:"uuid"`     // Unique identifier for the message and database record
 	FilePath string `json:"filepath"` // Uploaded file
 	MaxRows  int    `json:"max_rows"` // Max number of file rows to process by worker
 }

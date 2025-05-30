@@ -21,9 +21,8 @@ type UploadRouter struct {
 }
 
 func (r UploadRouter) Load(s *gin.Engine) {
-	/* publisher := phonebook.NewPhonebookPublisher(r.AmqpConfig, r.HttpConfig)
-	logger.Debug("Phonebook publisher initialized") */
-
+	s.GET("/ping", handlers.HealthCheck)
 	s.POST("/upload", middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(r.Services.PhonebookUploader))
+	s.GET("/upload/status/:uuid/:total", handlers.UploadStatus(r.Services.PhonebookUploader))
 	logger.Debug("Upload route registered")
 }

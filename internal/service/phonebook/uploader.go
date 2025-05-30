@@ -46,7 +46,7 @@ func (c *ContactUploader) Upload(ctx context.Context, file *FileMessage) error {
 		return NewFileError(file.FilePath, fmt.Errorf("error checking chunk file: %w", err))
 	}
 
-	files := []FilePart{{FilePath: file.FilePath, TotalRows: 0, ProcessTime: 0}}
+	files := []FilePart{{FilePath: file.FilePath, Uuid: file.Uuid, TotalRows: 0, ProcessTime: 0}}
 	if chunk {
 		files, err = c.chunkFile(file)
 		if err != nil {
@@ -118,7 +118,7 @@ func (c *ContactUploader) handleFiles(ctx context.Context, files []FilePart) err
 }
 
 func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error {
-	logger.Debug("Start processing routine file", "file", file.FilePath)
+	logger.Debug("Start processing routine file", "file", file.FilePath, "uuid", file.Uuid)
 
 	ctxT, cancel := context.WithTimeout(ctx, c.HttpConfig.FileTimeout)
 	defer cancel()
@@ -165,7 +165,7 @@ func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error 
 		//return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("simulate error file")}
 
 		// Batch insert contacts
-		br := c.handleBatchInsert(batch, headers, record, false)
+		br := c.handleBatchInsert(file, batch, headers, record, false)
 		if br != nil {
 			return db.NewDbError(br)
 		}
@@ -175,11 +175,11 @@ func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error 
 	}
 
 	// Batch insert contacts
-	br := c.handleBatchInsert(batch, headers, []string{}, true)
+	br := c.handleBatchInsert(file, batch, headers, []string{}, true)
 	if br != nil {
 		return db.NewDbError(fmt.Errorf("error while forcing insert batch contacts: %w", br))
 	}
 
-	logger.Debug("End processing routine file", "file", file.FilePath)
+	logger.Debug("End processing routine file", "file", file.FilePath, "uuid", file.Uuid)
 	return nil
 }

@@ -10,6 +10,7 @@ type ContactRepository interface {
 	Insert(contact *model.Contact) error
 	InsertBatch(contacts []*model.Contact) error
 	Truncate() error
+	CountByReqId(reqId string) (int, error)
 }
 
 type contactRepository struct{}
@@ -31,4 +32,13 @@ func (r *contactRepository) Truncate() error {
 	err := db.DB.Exec("TRUNCATE TABLE contacts").Error
 	logger.Trace("...Contacts table trucated")
 	return err
+}
+
+func (r *contactRepository) CountByReqId(reqId string) (int, error) {
+	var count int64
+	err := db.DB.Model(&model.Contact{}).Where("req_id = ?", reqId).Count(&count).Error
+	if err != nil {
+		return 0, err
+	}
+	return int(count), nil
 }

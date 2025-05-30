@@ -1,6 +1,7 @@
 package server
 
 import (
+	"go-csv-import/internal/config"
 	"go-csv-import/internal/logger"
 
 	"github.com/gin-gonic/gin"
@@ -8,11 +9,13 @@ import (
 
 type Server struct {
 	Engine *gin.Engine
+	Config *config.HttpConfig
 }
 
-func New() *Server {
+func New(c *config.HttpConfig) *Server {
 	return &Server{
 		Engine: gin.Default(),
+		Config: c,
 	}
 }
 
@@ -20,9 +23,9 @@ func (s *Server) LoadRoutes(r HttpRouter) {
 	r.Load(s.Engine)
 }
 
-func (s *Server) Run(addr ...string) {
-	url := "http://localhost" + addr[0]
+func (s *Server) Run() {
+	url := s.Config.Host + s.Config.Port
 	logger.Info("API Server runs on " + url)
 
-	s.Engine.Run(addr...)
+	s.Engine.Run(s.Config.Port)
 }

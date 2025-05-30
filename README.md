@@ -79,3 +79,5 @@ When loading Docker containers, command `make reload` sends a signal to hot relo
     1. Tests with empty datatable to insert 1M rows
     2. Tests with already filled datatable of 1M rows or more
 3. Add PHP/Symfony Docker service to create the same API/Test/Benchmark scenario
+4. Add a REST response to /upload with another endpoint (uuid) to follow upload status in percentile
+5. Implements a GUI to select a file to upload and an a progressbar

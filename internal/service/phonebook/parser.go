@@ -21,7 +21,7 @@ func (c *ContactUploader) combine(header []string, row []string) (map[string]str
 	return r, nil
 }
 
-func (c *ContactUploader) createContactFromRow(header []string, row []string) (*model.Contact, error) {
+func (c *ContactUploader) createContactFromRow(file *FilePart, header []string, row []string) (*model.Contact, error) {
 	r, err := c.combine(header, row)
 	if err != nil {
 		return &model.Contact{}, err
@@ -38,16 +38,17 @@ func (c *ContactUploader) createContactFromRow(header []string, row []string) (*
 	}
 
 	return &model.Contact{
+		ReqId:     file.Uuid,
 		Phone:     r["Phone"],
 		Firstname: r["Firstname"],
 		Lastname:  r["Lastname"],
 	}, nil
 }
 
-func (c *ContactUploader) handleBatchInsert(batch *Batch, header []string, row []string, force bool) error {
+func (c *ContactUploader) handleBatchInsert(file *FilePart, batch *Batch, header []string, row []string, force bool) error {
 	var err error
 	if len(row) > 0 {
-		c, err := c.createContactFromRow(header, row)
+		c, err := c.createContactFromRow(file, header, row)
 		if err != nil {
 			return err
 		}

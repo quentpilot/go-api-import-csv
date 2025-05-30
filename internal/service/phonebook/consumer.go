@@ -14,7 +14,7 @@ import (
 func NewPhonebookConsumer(a *config.ApmqConfig, h *config.HttpConfig, d *config.DbConfig) *PhonebookHandler {
 	self := NewPhonebookPublisher(a, h)
 
-	self.uploader = NewContactUploader(h, d)
+	self.Uploader = NewContactUploader(h, d)
 
 	return self
 }
@@ -39,7 +39,7 @@ func (p *PhonebookHandler) Consume(ctx context.Context) {
 		start := time.Now()
 		logger.Info("Treating file", "file", file.FilePath)
 
-		if err := p.uploader.Upload(ctxT, file); err != nil {
+		if err := p.Uploader.Upload(ctxT, file); err != nil {
 			p.printTypedErrors(err, file)
 		} else {
 			logger.Info("File successful treated", "file", file.FilePath, "time", time.Since(start))

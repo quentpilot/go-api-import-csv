@@ -9,6 +9,7 @@ import (
 )
 
 type FilePart struct {
+	Uuid        string        // Unique identifier for the message and database record
 	FilePath    string        // File to treat
 	TotalRows   int           // Total number of rows in the file
 	ProcessTime time.Duration // Time taken to process the file

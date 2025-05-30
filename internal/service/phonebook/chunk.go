@@ -83,11 +83,11 @@ func (i *ContactUploader) chunkFile(file *FileMessage) ([]FilePart, error) {
 		filename := fmt.Sprintf("%v-part-%d.csv", filepath.Base(file.FilePath), chunkIndex)
 		filename = filepath.Join("/tmp", filename)
 		chunkIndex++
-		file, err := os.Create(filename)
+		fo, err := os.Create(filename)
 		if err != nil {
 			return err
 		}
-		out = file
+		out = fo
 		writer = bufio.NewWriter(out)
 
 		// Write the header to the new chunked file
@@ -95,7 +95,7 @@ func (i *ContactUploader) chunkFile(file *FileMessage) ([]FilePart, error) {
 			return err
 		}
 
-		filePart := FilePart{FilePath: filename, TotalRows: 0, ProcessTime: 0}
+		filePart := FilePart{FilePath: filename, Uuid: file.Uuid, TotalRows: 0, ProcessTime: 0}
 		chunkFiles = append(chunkFiles, filePart)
 		currentLine = 0
 		return nil

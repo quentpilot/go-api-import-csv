@@ -18,7 +18,7 @@ type PhonebookHandler struct {
 	AmqpConfig *config.ApmqConfig
 	HttpConfig *config.HttpConfig
 	Queue      *amqp.AmqpQueue
-	uploader   *ContactUploader
+	Uploader   *ContactUploader
 }
 
 // Close closes the AMQP queue and database connection.

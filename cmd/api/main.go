@@ -10,11 +10,12 @@ import (
 func main() {
 	self := bootstrap.Load(&config.AppConfig{
 		LoggerName: "api",
+		UseDb:      true,
 	})
-	self.Services = container.LoadApiServices(self.Conf)
+	self.Services = container.LoadConsumerServices(self.Conf)
 	self.WatchForReload()
 
-	s := server.New()
+	s := server.New(&self.Conf.Http)
 
 	s.LoadRoutes(server.UploadRouter{
 		HttpConfig: &self.Conf.Http,
@@ -22,5 +23,5 @@ func main() {
 		Services:   self.Services,
 	})
 
-	s.Run(self.HttpConfig().Port)
+	s.Run()
 }
