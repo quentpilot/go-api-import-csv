@@ -102,9 +102,9 @@ Then, you can use it like above cURL examples.
 > | `500`         | `application/json`                | `{"message":"Cannot save file"}`                                                                                        |
 
 ##### Success
-```json 
+```javascript 
 {
-    "message": "File is being processed", 
+    "message": "File is being processed",                       // Message infos
     "status_url": "http://localhost:8080/upload/status/{uuid}", // Callback URL to follow file upload progress
     "uuid": "{uuid}"                                            // Uuid of the request to handle contacts
 }
@@ -141,7 +141,7 @@ Then, you can use it like above cURL examples.
 > | `502`         | `application/json`                | `{"message":"Corrupted progress status data"}`                                                   |
 
 ##### Success
-```json 
+```javascript 
 {
     "Status": "Scheduled/Processing/Completed", // Humanized process status
     "Total": 10,                                // Total file rows (subtitute CSV headers)
