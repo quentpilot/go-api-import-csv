@@ -6,6 +6,7 @@ import (
 	"go-csv-import/internal/handlers"
 	"go-csv-import/internal/logger"
 	"go-csv-import/internal/middleware"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +23,7 @@ type UploadRouter struct {
 
 func (r UploadRouter) Load(s *gin.Engine) {
 	s.GET("/ping", handlers.HealthCheck)
-	s.POST("/upload", middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(r.Services.PhonebookUploader))
+	s.POST("/upload", middleware.Timeout(5*time.Second), middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(r.Services.PhonebookUploader))
 	s.GET("/upload/status/:uuid", handlers.UploadStatus(r.Services.PhonebookUploader))
 	logger.Debug("Upload route registered")
 }

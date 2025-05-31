@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"go-csv-import/internal/logger"
 	"go-csv-import/internal/utils"
 	"net/http"
 	"sync"
@@ -10,10 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// MessageProgressStore stores all progress file infos to deliver from API.
 type MessageProgressStore struct {
 	counter sync.Map
 }
 
+// MessageProgress stores current file progress infos.
 type MessageProgress struct {
 	Inserted  atomic.Int64
 	Total     atomic.Int64
@@ -21,6 +24,8 @@ type MessageProgress struct {
 	StartTime time.Time
 }
 
+// MessageProgressResponse is the interface contract
+// between public and private API to transfert current file progress infos.
 type MessageProgressResponse struct {
 	Status     string  `json:"Status"`
 	Total      int64   `json:"Total"`
@@ -50,15 +55,6 @@ func (s *MessageProgressStore) Increment(reqId string, batch int64) {
 	}
 }
 
-func (s *MessageProgressStore) Done(reqId string) {
-	if val, ok := s.counter.Load(reqId); ok {
-		if progress, ok := val.(*MessageProgress); ok {
-			dur := time.Since(progress.StartTime)
-			progress.Duration.Store(dur.Nanoseconds())
-		}
-	}
-}
-
 func (s *MessageProgressStore) Get(reqId string) (inserted int64, total int64, duration int64, ok bool) {
 	if val, ok := s.counter.Load(reqId); ok {
 		if progress, ok := val.(*MessageProgress); ok {
@@ -68,10 +64,13 @@ func (s *MessageProgressStore) Get(reqId string) (inserted int64, total int64, d
 	return 0, 0, 0, false
 }
 
+// Handler retrieves progress file infos from file request identifier
 func (s *MessageProgressStore) Handler() http.Handler {
 	r := gin.Default()
 	r.GET("/upload/status/:uuid", func(c *gin.Context) {
 		uuid := c.Param("uuid")
+		logger.Info("Call endpoint /upload/status", "uuid", uuid)
+
 		if inserted, total, duration, ok := s.Get(uuid); ok {
 			resp := &MessageProgressResponse{
 				Total:      total,
@@ -87,9 +86,11 @@ func (s *MessageProgressStore) Handler() http.Handler {
 				}(),
 				Duration: time.Duration(duration).String(),
 			}
+			logger.Debug("Progress Found", "body", resp)
 			c.JSON(http.StatusOK, resp)
 		} else {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Progress not found"})
+			logger.Error("Progress Not Found")
+			c.JSON(http.StatusNotFound, gin.H{"message": "Progress not found"})
 		}
 	})
 	return r
