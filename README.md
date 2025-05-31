@@ -52,6 +52,9 @@ this will create file `testdata/gen_contact_1000000.csv` with 1M of rows.
 
 Then, you can use it like above cURL examples.
 
+### </> Use HTML form
+Go to http://localhost:8080/upload-form to upload file from webview.
+
 ## 📕 API Doc
 ### HTTP server health status
 
