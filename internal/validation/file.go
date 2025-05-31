@@ -12,6 +12,6 @@ func IsValidCSV(fileName string) error {
 	if ext == ".csv" {
 		return nil
 	} else {
-		return fmt.Errorf("invalid file csv type: %s. expected a .csv file", ext)
+		return fmt.Errorf("invalid file type: %s. expected a .csv file", ext)
 	}
 }

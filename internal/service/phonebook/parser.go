@@ -61,6 +61,7 @@ func (c *ContactUploader) handleBatchInsert(file *FilePart, batch *Batch, header
 		//time.Sleep(6 * time.Second)
 		logger.Trace("Batch insert contacts", "total", batch.Length, "force", force)
 		err = c.Repository.InsertBatch(batch.Contacts)
+		c.ProgressStore.Increment(file.Uuid, int64(batch.Length))
 		batch.Reset()
 	}
 

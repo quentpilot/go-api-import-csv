@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/db"
+	"go-csv-import/internal/handlers/worker"
 	"go-csv-import/internal/logger"
 	"go-csv-import/internal/repository"
+	"go-csv-import/internal/utils"
 	"io"
 	"os"
 	"runtime"
@@ -22,16 +24,18 @@ type UploaderService interface {
 }
 
 type ContactUploader struct {
-	HttpConfig *config.HttpConfig
-	DbConfig   *config.DbConfig
-	Repository repository.ContactRepository
+	HttpConfig    *config.HttpConfig
+	DbConfig      *config.DbConfig
+	Repository    repository.ContactRepository
+	ProgressStore *worker.MessageProgressStore
 }
 
-func NewContactUploader(h *config.HttpConfig, d *config.DbConfig) *ContactUploader {
+func NewContactUploader(h *config.HttpConfig, d *config.DbConfig, p *worker.MessageProgressStore) *ContactUploader {
 	return &ContactUploader{
-		HttpConfig: h,
-		DbConfig:   d,
-		Repository: repository.NewContactRepository(),
+		HttpConfig:    h,
+		DbConfig:      d,
+		Repository:    repository.NewContactRepository(),
+		ProgressStore: p,
 	}
 }
 
@@ -41,6 +45,12 @@ func (c *ContactUploader) reset() {
 
 func (c *ContactUploader) Upload(ctx context.Context, file *FileMessage) error {
 	c.reset()
+	totalRows, err := utils.FileCountRowsCsv(file.FilePath)
+	if err != nil {
+		return NewFileError(file.FilePath, fmt.Errorf("error counting file rows: %w", err))
+	}
+	c.ProgressStore.Init(file.Uuid, int64(totalRows))
+
 	chunk, err := c.mustChunkFile(file)
 	if err != nil {
 		return NewFileError(file.FilePath, fmt.Errorf("error checking chunk file: %w", err))

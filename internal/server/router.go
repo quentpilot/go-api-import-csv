@@ -23,6 +23,6 @@ type UploadRouter struct {
 func (r UploadRouter) Load(s *gin.Engine) {
 	s.GET("/ping", handlers.HealthCheck)
 	s.POST("/upload", middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(r.Services.PhonebookUploader))
-	s.GET("/upload/status/:uuid/:total", handlers.UploadStatus(r.Services.PhonebookUploader))
+	s.GET("/upload/status/:uuid", handlers.UploadStatus(r.Services.PhonebookUploader))
 	logger.Debug("Upload route registered")
 }

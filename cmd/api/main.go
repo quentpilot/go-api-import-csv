@@ -10,9 +10,8 @@ import (
 func main() {
 	self := bootstrap.Load(&config.AppConfig{
 		LoggerName: "api",
-		UseDb:      true,
 	})
-	self.Services = container.LoadConsumerServices(self.Conf)
+	self.Services = container.LoadApiServices(self.Conf)
 	self.WatchForReload()
 
 	s := server.New(&self.Conf.Http)

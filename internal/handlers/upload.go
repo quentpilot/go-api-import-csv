@@ -1,13 +1,18 @@
 package handlers
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"go-csv-import/internal/handlers/worker"
 	"go-csv-import/internal/logger"
 	"go-csv-import/internal/service/phonebook"
-	"go-csv-import/internal/utils"
 	"go-csv-import/internal/validation"
 	"net/http"
+	"os"
 	"path/filepath"
-	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -27,7 +32,7 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		file, err := c.FormFile("file")
 		if err != nil {
 			logger.Error("Error uploading file", "error", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing file"})
+			c.JSON(http.StatusBadRequest, gin.H{"message": "Missing File"})
 			return
 		}
 
@@ -35,7 +40,7 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		err = validation.IsValidCSV(file.Filename)
 		if err != nil {
 			logger.Error("Error validating file type is a .csv", "error", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			c.JSON(http.StatusUnsupportedMediaType, gin.H{"message": err.Error()})
 			return
 		}
 
@@ -43,18 +48,12 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		dst := filepath.Join("/shared", file.Filename)
 		logger.Debug("Saving uploaded file", "filepath", dst)
 		if err := c.SaveUploadedFile(file, dst); err != nil {
-			logger.Error("Error saving file", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			logger.Error("Error saving file", "message", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot save file"})
 			return
 		}
 
 		uuid := uuid.New().String()
-		totalRows, err := utils.FileCountRowsCsv(dst)
-		if err != nil {
-			logger.Error("Error counting rows in file", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
 
 		// Send file path to RabbitMQ
 		job := &phonebook.FileMessage{
@@ -70,11 +69,12 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 			return
 		}
 
-		statusUrl := publisher.HttpConfig.Host + publisher.HttpConfig.Port + "/upload/status/" + uuid + "/" + strconv.Itoa(totalRows)
+		statusUrl := publisher.HttpConfig.Host + publisher.HttpConfig.Port + "/upload/status/" + uuid
 		logger.Info("File is being processed", "file", file.Filename, "uuid", uuid, "status_url", statusUrl)
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusAccepted, gin.H{
 			"message":    "File is being processed",
 			"status_url": statusUrl,
+			"uuid":       uuid,
 		})
 	}
 }
@@ -90,35 +90,50 @@ TODO: Add cache to avoid counting rows in the database every time the status is 
 func UploadStatus(p *phonebook.PhonebookHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uuid := c.Param("uuid")
-		totalRows, err := strconv.Atoi(c.Param("total"))
+		logger.Info("Call endpoint /upload/status", "uuid", uuid)
+
+		// Call worker API
+		url := fmt.Sprintf("http://worker:9090/upload/status/%s", uuid)
+		logger.Debug("Call worker API to get progress", "url", url)
+
+		client := http.Client{
+			Timeout: 2 * time.Second,
+		}
+
+		resp, err := client.Get(url)
 		if err != nil {
-			logger.Error("Error parsing total rows", "error", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid total rows parameter"})
+			if os.IsTimeout(err) {
+				logger.Error("Timeout error getting progress from worker", "error", err)
+				c.JSON(http.StatusGatewayTimeout, gin.H{"message": "Request to worker timed out"})
+				return
+			} else if errors.Is(err, context.DeadlineExceeded) {
+				logger.Error("Deadline exceeded error getting progress from worker", "error", err)
+				c.JSON(http.StatusGatewayTimeout, gin.H{"message": "Request to worker deadline exceeded"})
+				return
+			} else {
+				logger.Error("Error getting progress from worker", "error", err, "status_code", resp.StatusCode)
+				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to get progress status from worker"})
+				return
+			}
+		}
+		if resp.StatusCode != http.StatusOK {
+			logger.Error("Error status from worker", "error", err, "status_code", resp.StatusCode, "body", resp.Body)
+			c.JSON(resp.StatusCode, gin.H{"message": "Progess Status Not Found"})
 			return
 		}
-		logger.Info("Call endpoint /upload/status", "uuid", uuid, "total", totalRows)
 
-		pRows, err := p.Uploader.Repository.CountByReqId(uuid)
-		if err != nil {
-			logger.Error("Error counting inserted rows", "error", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to count inserted rows"})
+		defer resp.Body.Close()
+		logger.Debug("Worker response received", "status_code", resp.StatusCode)
+
+		// Parse server API response to send client API response
+		ps := &worker.MessageProgressResponse{}
+		if err := json.NewDecoder(resp.Body).Decode(&ps); err != nil {
+			logger.Error("Error decoding progress response", "error", err)
+			c.JSON(http.StatusBadGateway, gin.H{"message": "Corrupted progress status data"})
 			return
 		}
+		logger.Info("Progress status received", "status", ps.Status, "total_rows", ps.Total, "processed_rows", ps.Inserted, "percentile", ps.Percentile)
 
-		percentile := utils.MathRound(float64(pRows)/float64(totalRows)*100, 3)
-		status := "Processing"
-		if pRows == totalRows {
-			status = "Completed"
-		} else if pRows < totalRows && pRows == 0 {
-			status = "Scheduled"
-		}
-
-		logger.Info("File is "+status, "uuid", uuid, "status", status, "percentile", percentile, "total_rows", totalRows, "processed_rows", pRows)
-		c.JSON(http.StatusOK, gin.H{
-			"status":         status,
-			"total_rows":     totalRows,
-			"processed_rows": pRows,
-			"percentile":     percentile,
-		})
+		c.JSON(http.StatusOK, ps)
 	}
 }
