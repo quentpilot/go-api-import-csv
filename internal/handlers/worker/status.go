@@ -22,6 +22,7 @@ type MessageProgress struct {
 	Total     atomic.Int64
 	Duration  atomic.Int64
 	StartTime time.Time
+	Error     error
 }
 
 // MessageProgressResponse is the interface contract
@@ -55,13 +56,21 @@ func (s *MessageProgressStore) Increment(reqId string, batch int64) {
 	}
 }
 
-func (s *MessageProgressStore) Get(reqId string) (inserted int64, total int64, duration int64, ok bool) {
+func (s *MessageProgressStore) SetError(reqId string, err error) {
 	if val, ok := s.counter.Load(reqId); ok {
 		if progress, ok := val.(*MessageProgress); ok {
-			return progress.Inserted.Load(), progress.Total.Load(), progress.Duration.Load(), true
+			progress.Error = err
 		}
 	}
-	return 0, 0, 0, false
+}
+
+func (s *MessageProgressStore) Get(reqId string) (inserted int64, total int64, duration int64, err error, ok bool) {
+	if val, ok := s.counter.Load(reqId); ok {
+		if progress, ok := val.(*MessageProgress); ok {
+			return progress.Inserted.Load(), progress.Total.Load(), progress.Duration.Load(), progress.Error, true
+		}
+	}
+	return 0, 0, 0, nil, false
 }
 
 // Handler retrieves progress file infos from file request identifier
@@ -71,27 +80,39 @@ func (s *MessageProgressStore) Handler() http.Handler {
 		uuid := c.Param("uuid")
 		logger.Info("Call endpoint /upload/status", "uuid", uuid)
 
-		if inserted, total, duration, ok := s.Get(uuid); ok {
+		if inserted, total, duration, err, ok := s.Get(uuid); ok {
 			resp := &MessageProgressResponse{
 				Total:      total,
 				Inserted:   inserted,
 				Percentile: utils.MathRound(float64(inserted)/float64(total)*100, 3),
-				Status: func() string {
-					if inserted == 0 {
-						return "Scheduled"
-					} else if inserted < total {
-						return "Processing"
-					}
-					return "Completed"
-				}(),
-				Duration: time.Duration(duration).String(),
+				Status:     s.getStatus(inserted, total, err),
+				Duration:   time.Duration(duration).String(),
 			}
+
+			statusCode := http.StatusOK
+			if resp.Status == "Error" {
+				statusCode = http.StatusMultiStatus
+				logger.Error("Progress Error Found", "error", err.Error())
+				resp.Status += ": " + err.Error()
+			}
+
 			logger.Debug("Progress Found", "body", resp)
-			c.JSON(http.StatusOK, resp)
+			c.JSON(statusCode, resp)
 		} else {
 			logger.Error("Progress Not Found")
 			c.JSON(http.StatusNotFound, gin.H{"message": "Progress not found"})
 		}
 	})
 	return r
+}
+
+func (s *MessageProgressStore) getStatus(inserted int64, total int64, err error) string {
+	if err != nil {
+		return "Error"
+	} else if inserted == 0 {
+		return "Scheduled"
+	} else if inserted < total {
+		return "Processing"
+	}
+	return "Completed"
 }

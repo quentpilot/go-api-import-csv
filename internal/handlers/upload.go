@@ -121,7 +121,7 @@ func UploadStatus(p *phonebook.PhonebookHandler) gin.HandlerFunc {
 				return
 			}
 		}
-		if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode >= http.StatusBadRequest {
 			logger.Error("Error status from worker", "error", err, "status_code", resp.StatusCode, "body", resp.Body)
 			c.JSON(resp.StatusCode, gin.H{"message": "Progess Status Not Found"})
 			return
@@ -141,7 +141,7 @@ func UploadStatus(p *phonebook.PhonebookHandler) gin.HandlerFunc {
 		cache.CacheApiUploadStatus.Set(uuid, ps, 0)
 		logger.Info("Progress status received", "status", ps.Status, "total_rows", ps.Total, "processed_rows", ps.Inserted, "percentile", ps.Percentile)
 
-		c.JSON(http.StatusOK, ps)
+		c.JSON(resp.StatusCode, ps)
 	}
 }
 

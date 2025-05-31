@@ -15,6 +15,7 @@ import (
 func NewPhonebookConsumer(a *config.ApmqConfig, h *config.HttpConfig, d *config.DbConfig, s *worker.MessageProgressStore) *PhonebookHandler {
 	self := NewPhonebookPublisher(a, h)
 
+	self.ProgressStore = s
 	self.Uploader = NewContactUploader(h, d, s)
 
 	return self
@@ -41,6 +42,7 @@ func (p *PhonebookHandler) Consume(ctx context.Context) {
 		logger.Info("Treating file", "file", file.FilePath)
 
 		if err := p.Uploader.Upload(ctxT, file); err != nil {
+			p.ProgressStore.SetError(file.Uuid, err)
 			p.printTypedErrors(err, file)
 		} else {
 			logger.Info("File successful treated", "file", file.FilePath, "time", time.Since(start))

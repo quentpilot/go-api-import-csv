@@ -5,6 +5,7 @@ import (
 	"go-csv-import/internal/amqp"
 	"go-csv-import/internal/config"
 	"go-csv-import/internal/db"
+	"go-csv-import/internal/handlers/worker"
 	"go-csv-import/internal/logger"
 	"log/slog"
 )
@@ -15,10 +16,11 @@ type PhonebookService interface {
 }
 
 type PhonebookHandler struct {
-	AmqpConfig *config.ApmqConfig
-	HttpConfig *config.HttpConfig
-	Queue      *amqp.AmqpQueue
-	Uploader   *ContactUploader
+	AmqpConfig    *config.ApmqConfig
+	HttpConfig    *config.HttpConfig
+	Queue         *amqp.AmqpQueue
+	Uploader      *ContactUploader
+	ProgressStore *worker.MessageProgressStore
 }
 
 // Close closes the AMQP queue and database connection.
