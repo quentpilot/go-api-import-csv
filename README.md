@@ -132,13 +132,13 @@ Then, you can use it like above cURL examples.
 
 #### Responses
 
-> | http code     | content-type                      | response                                                                                         |
-> |---------------|-----------------------------------|--------------------------------------------------------------------------------------------------|
-> | `200`         | `application/json`                | `{"Status": "Scheduled/Processing/Completed", "Total": 10, "Inserted": 8, "Percentile": 80.000}` |
-> | `404`         | `application/json`                | `{"message":"Progress Status Not Found"}`                                                        |
-> | `504`         | `application/json`                | `{"message":"Request to worker timed out"}`                                                      |
-> | `500`         | `application/json`                | `{"message":"Failed to get progress status from worker"}`                                        |
-> | `502`         | `application/json`                | `{"message":"Corrupted progress status data"}`                                                   |
+> | http code     | content-type                      | response                                                                                                                   |
+> |---------------|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+> | `200`         | `application/json`                | `{"Status": "Scheduled/Processing/Completed", "Total": 10, "Inserted": 8, "Percentile": 80.000, "Duration": "560.5454ms"}` |
+> | `404`         | `application/json`                | `{"message":"Progress Status Not Found"}`                                                                                  |
+> | `504`         | `application/json`                | `{"message":"Request to worker timed out"}`                                                                                |
+> | `500`         | `application/json`                | `{"message":"Failed to get progress status from worker"}`                                                                  |
+> | `502`         | `application/json`                | `{"message":"Corrupted progress status data"}`                                                                             |
 
 ##### Success
 ```javascript 
@@ -147,6 +147,7 @@ Then, you can use it like above cURL examples.
     "Total": 10,                                // Total file rows (subtitute CSV headers)
     "Inserted": 8,                              // Total inserted rows through database
     "Percentile": 80.000                        // Progress Percentile
+    "Duration": "560.5454ms"                    // Current processing time
 }
 ```
 

@@ -10,6 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/joho/godotenv v1.5.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/streadway/amqp v1.0.0
 	github.com/stretchr/testify v1.9.0
 	gorm.io/driver/mysql v1.5.7

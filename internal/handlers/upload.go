@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go-csv-import/internal/cache"
 	"go-csv-import/internal/handlers/worker"
 	"go-csv-import/internal/logger"
 	"go-csv-import/internal/service/phonebook"
@@ -83,14 +84,18 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 UploadStatus returns the status of the file upload process.
 It checks how many rows have been processed and calculates the percentage of completion.
 It returns the status as "Scheduled", "Processing", or "Completed" based on the number of processed rows.
-
-TODO: Add a timeout to the request to avoid long processing times.
-TODO: Add cache to avoid counting rows in the database every time the status is requested.
 */
 func UploadStatus(p *phonebook.PhonebookHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uuid := c.Param("uuid")
 		logger.Info("Call endpoint /upload/status", "uuid", uuid)
+
+		// Check cache data
+		if cached, found := cache.CacheApiUploadStatus.Get(uuid); found {
+			logger.Info("Send progress status from cache")
+			c.JSON(http.StatusOK, cached)
+			return
+		}
 
 		// Call worker API
 		url := fmt.Sprintf("http://worker:9090/upload/status/%s", uuid)
@@ -132,6 +137,8 @@ func UploadStatus(p *phonebook.PhonebookHandler) gin.HandlerFunc {
 			c.JSON(http.StatusBadGateway, gin.H{"message": "Corrupted progress status data"})
 			return
 		}
+
+		cache.CacheApiUploadStatus.Set(uuid, ps, 0)
 		logger.Info("Progress status received", "status", ps.Status, "total_rows", ps.Total, "processed_rows", ps.Inserted, "percentile", ps.Percentile)
 
 		c.JSON(http.StatusOK, ps)
