@@ -25,5 +25,8 @@ func (r UploadRouter) Load(s *gin.Engine) {
 	s.GET("/ping", handlers.HealthCheck)
 	s.POST("/upload", middleware.Timeout(5*time.Second), middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(r.Services.PhonebookUploader))
 	s.GET("/upload/status/:uuid", handlers.UploadStatus(r.Services.PhonebookUploader))
+
+	s.LoadHTMLGlob("templates/*")
+	s.GET("/upload-form", handlers.HtmlUpload())
 	logger.Debug("Upload route registered")
 }

@@ -144,3 +144,9 @@ func UploadStatus(p *phonebook.PhonebookHandler) gin.HandlerFunc {
 		c.JSON(http.StatusOK, ps)
 	}
 }
+
+func HtmlUpload() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.HTML(http.StatusOK, "upload.html", nil)
+	}
+}

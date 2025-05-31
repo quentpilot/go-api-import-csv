@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Upload CSV File in Go</title>
+	<style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: sans-serif;
+            background-color: #02778f;
+            color: #fcae42;
+            margin: 0;
+            padding: 0;
+        }
+        form {
+            background: white;
+            color: #fcae42;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+        .progress {
+            width: 100%;
+            background: #eee;
+            margin-top: 10px;
+            border-radius: 10px;
+        }
+        .bar {
+            height: 20px;
+            width: 0%;
+            background: #4caf50;
+            text-align: center;
+            color: white;
+            /*margin-left: 5px;*/
+            margin-top: 2px;
+            border-radius: 10px;
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            box-shadow: 0 0 6px 2px white;
+            animation: sparkle 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        @keyframes sparkle {
+            from {
+                transform: scale(1);
+                opacity: 1;
+            }
+            to {
+                transform: scale(2);
+                opacity: 0;
+                top: -50px;
+            }
+        }
+
+        .emoji-sparkle {
+            position: absolute;
+            font-size: 18px;
+            animation: emojiSparkle 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        @keyframes emojiSparkle {
+            from {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-200px) scale(2);
+            }
+        }
+	</style>
+</head>
+<body>
+    <div class="flex justify-content-between">
+        <h2>Upload CSV File</h2>
+        <form id="uploadForm">
+            <input type="file" name="file" id="file" required>
+            <button type="submit">Upload</button>
+        </form>
+        <div class="flex" style="margin-top: 20px;">
+            <div>File upload progress</div>
+            <div id="progress" class="progress"><div id="bar" class="bar">0%</div></div>
+        </div>
+        <div class="flex" style="margin-top: 15px;">
+            <div>Contact import progress</div>
+            <div id="progress2" class="progress">
+                <div id="bar2" class="bar">0%</div>
+            </div>
+        </div>
+        <p id="result"></p>
+    </div>
+
+<script>
+
+// Form submit event listener
+document.getElementById("uploadForm").addEventListener("submit", function(e) {
+	e.preventDefault();
+    const bar = document.getElementById("bar");
+    const bar2 = document.getElementById("bar2");
+    const result = document.getElementById("result");
+
+    // Reset bars and result
+    bar.style.width = "0%"
+    bar2.style.width = "0%"
+    result.innerHTML = ""
+
+	const fileInput = document.getElementById("file");
+	const file = fileInput.files[0];
+	if (!file) return;
+
+	const formData = new FormData();
+	formData.append("file", file);
+
+	const xhr = new XMLHttpRequest();
+	xhr.open("POST", "/upload", true);
+
+	xhr.upload.onprogress = function(e) {
+		if (e.lengthComputable) {
+			let percent = Math.round((e.loaded / e.total) * 100);
+			
+			bar.style.width = percent + "%";
+			bar.textContent = percent + "%";
+            result.innerHTML = "🔥​ Uploading file..."
+		}
+	};
+
+	xhr.onload = function() {
+		
+		if (xhr.status === 202) {
+            message = JSON.parse(xhr.responseText)
+			result.innerHTML = "👌​​ "+ message.message;
+            if (message.status_url) {
+                pollProgress(message.status_url);
+            }
+		} else {
+			result.innerHTML = "⚠️​ Error : " + xhr.responseText;
+		}
+	};
+
+	xhr.send(formData);
+});
+
+// Contact import progressbar handler
+function pollProgress(statusUrl) {
+    const bar2 = document.getElementById("bar2");
+    const progress2 = document.getElementById("progress2");
+
+    // Reset bar2
+    bar2.style.width = "0%";
+    bar2.textContent = "0%";
+    let intervalId = setInterval(() => {
+        fetch(statusUrl)
+            .then(response => response.json())
+            .then(data => {
+                let result = document.getElementById("result");
+                let percent = data.Percentile || 0;
+                if (percent > 100) percent = 100;
+                bar2.style.width = percent + "%";
+                bar2.textContent = percent + "%";
+                
+                console.log("progress", data)
+                result.innerHTML = `🤞 ${data.Inserted} / ${data.Total} contacts processed`
+                
+                if (percent == 100 || data.Status === "Completed") {
+                    console.log("Import Done")
+                    result.innerHTML = "🎉​ Contacts Uploaded";
+                    clearInterval(intervalId);
+                    triggerEmojiSparkles(bar2)
+                    triggerSparkles(result)
+                }
+            })
+            .catch(() => {
+                bar2.textContent = "Erreur";
+                bar2.style.background = "#e53935";
+                clearInterval(intervalId);
+            });
+    }, 1000);
+}
+
+
+/*** Complete upload animations ***/
+
+function createSparkle(x, y) {
+	const sparkle = document.createElement("div");
+	sparkle.className = "sparkle";
+	sparkle.style.left = `${x}px`;
+	sparkle.style.top = `${y}px`;
+	document.body.appendChild(sparkle);
+	setTimeout(() => sparkle.remove(), 5000);
+}
+
+function createEmojiSparkle(x, y) {
+	const emojis = ["✨", "💫", "🌟", "⭐", "🥳​", "🤯​", "🎉​", "🔥"];
+	const el = document.createElement("div");
+    const offsetX = (Math.random() - 0.5) * 50;
+    const offsetY = (Math.random() - 0.5) * 30;
+    
+	el.className = "emoji-sparkle";
+	el.style.left = `${x + offsetX}px`;
+	el.style.top = `${y + offsetY}px`;
+	el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+	document.body.appendChild(el);
+	setTimeout(() => el.remove(), 8000);
+}
+
+function triggerSparkles(el) {
+	const rect = el.getBoundingClientRect();
+	for (let i = 0; i < 35; i++) {
+		const x = rect.left + rect.width * Math.random();
+		const y = rect.top + rect.height * Math.random();
+		createSparkle(x, y);
+	}
+}
+
+function triggerEmojiSparkles(el) {
+	const rect = el.getBoundingClientRect();
+	for (let i = 0; i < 25; i++) {
+		const x = rect.left + rect.width * Math.random();
+		const y = rect.top + rect.height * Math.random();
+		createEmojiSparkle(x+5, y+8);
+	}
+}
+</script>
+</body>
+</html>
