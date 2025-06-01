@@ -2,7 +2,7 @@ package amqp
 
 import "github.com/streadway/amqp"
 
-func (q *AmqpQueue) Publish(message AmqpMessage) error {
+func (q *AmqpQueue) Publish(message AmqpMessage, tag string) error {
 	conn, ch, err := q.connect()
 	if err != nil {
 		return err
@@ -13,5 +13,6 @@ func (q *AmqpQueue) Publish(message AmqpMessage) error {
 	return ch.Publish("", q.Name, false, false, amqp.Publishing{
 		ContentType: "application/json",
 		Body:        message.Get(),
+		Type:        tag,
 	})
 }

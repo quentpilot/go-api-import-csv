@@ -7,7 +7,7 @@ import (
 // AmqpMessageHandler represents the way to transport AMQP messages between producer input and consumer output.
 type AmqpQueueHandler interface {
 	connect() (*amqp.Connection, *amqp.Channel, error) // internal server connection
-	Publish(message AmqpMessage) error                 // Publish a message to the RabbitMQ queue
+	Publish(message AmqpMessage, tag string) error     // Publish a message to the RabbitMQ queue
 	Consume() <-chan amqp.Delivery                     // Get messages from queue. No error handling here, as it panics on error
 }
 

@@ -19,11 +19,11 @@ func NewPhonebookPublisher(a *config.ApmqConfig, h *config.HttpConfig) *Phoneboo
 }
 
 // Publish sends a json string of FileMessage to the AMQP queue.
-func (p *PhonebookHandler) Publish(message *FileMessage) error {
+func (p *PhonebookHandler) Publish(message *FileMessage, tag string) error {
 	body, err := amqp.NewJsonMessageEncoder(message)
 	if err != nil {
 		return err
 	}
 
-	return p.Queue.Publish(body)
+	return p.Queue.Publish(body, tag)
 }

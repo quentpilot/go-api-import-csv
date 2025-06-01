@@ -64,7 +64,7 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		}
 
 		logger.Trace("Publishing message to queue", "message", job)
-		if err := publisher.Publish(job); err != nil {
+		if err := publisher.Publish(job, "upload"); err != nil {
 			logger.Error("Error publishing message to queue", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
 			return
