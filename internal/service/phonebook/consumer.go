@@ -25,7 +25,7 @@ func (p *PhonebookHandler) Consume(ctx context.Context) {
 	for msg := range p.Queue.Consume(true) {
 		ctxT, cancel := context.WithTimeout(ctx, p.AmqpConfig.Lifetime)
 		defer cancel()
-		logger.Trace("Message received from queue", "message", msg.Body)
+		logger.Trace("Message received from queue", "type", msg.Type, "message", msg.Body)
 
 		if err := msgHandler.Process(ctxT, msg); err != nil {
 			logger.Error("MessageHandler error", "tag", msg.Type, "error", err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-csv-import/internal/amqp"
+	"go-csv-import/internal/db"
 	"go-csv-import/internal/logger"
 	"time"
 
@@ -66,5 +67,24 @@ func (p *PhonebookHandler) handleMessageInsertPhonebook(ctx context.Context, bod
 }
 
 func (p *PhonebookHandler) handleMessageDeletePhonebook(ctx context.Context, body []byte) error {
+	// Decode the message body into a FileMessage struct.
+	var file *FileMessage
+	message := amqp.NewJsonMessageDecoder(body)
+	err := message.Decode(&file)
+	if err != nil {
+		logger.Error("Decode AMQP message", "body", body, "error", err, "type", fmt.Sprintf("%T", err))
+		return fmt.Errorf("cannot decode AMQP message for FileMessage")
+	}
+
+	start := time.Now()
+	logger.Info("Deleting contacts...")
+
+	err = p.Uploader.Repository.DeleteByReqId(file.Uuid)
+	if err != nil {
+		logger.Error("Cannot delete contacts", "error", err)
+		return db.NewDbError(fmt.Errorf("cannot delete contacts: %w", err))
+	}
+
+	logger.Info("Contacts successful deleted ", "time", time.Since(start))
 	return nil
 }

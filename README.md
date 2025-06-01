@@ -99,7 +99,7 @@ Go to http://localhost:8080/upload-form to upload file from webview.
 
 > | http code     | content-type                      | response                                                                                                                |
 > |---------------|-----------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-> | `202`         | `application/json`                | `{"message": "File is being processed", "status_url": "http://localhost:8080/upload/status/{uuid}", "uuid": "{uuid}"}`  |
+> | `202`         | `application/json`                | `{"message": "File is being processed", "status_url": "http://localhost:8080/upload/status/{uuid}", "delete_url": "http://localhost:8080/delete/{uuid}", "uuid": "{uuid}"}`  |
 > | `400`         | `application/json`                | `{"message":"Missing File"}`                                                                                            |
 > | `415`         | `application/json`                | `{"message":"invalid file type {ext}. expected a .csv file"}`                                                           |
 > | `500`         | `application/json`                | `{"message":"Cannot save file"}`                                                                                        |
@@ -109,6 +109,7 @@ Go to http://localhost:8080/upload-form to upload file from webview.
 {
     "message": "File is being processed",                       // Message infos
     "status_url": "http://localhost:8080/upload/status/{uuid}", // Callback URL to follow file upload progress
+    "delete_url": "http://localhost:8080/delete/{uuid}",        // Callback URL to delete contacts
     "uuid": "{uuid}"                                            // Uuid of the request to handle contacts
 }
 ```
@@ -138,6 +139,7 @@ Go to http://localhost:8080/upload-form to upload file from webview.
 > | http code     | content-type                      | response                                                                                                                   |
 > |---------------|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------|
 > | `200`         | `application/json`                | `{"Status": "Scheduled/Processing/Completed", "Total": 10, "Inserted": 8, "Percentile": 80.000, "Duration": "560.5454ms"}` |
+> | `207`         | `application/json`                | `{"Status": "Error: {message}", "Total": 10, "Inserted": 8, "Percentile": 80.000, "Duration": "560.5454ms"}` |
 > | `404`         | `application/json`                | `{"message":"Progress Status Not Found"}`                                                                                  |
 > | `504`         | `application/json`                | `{"message":"Request to worker timed out"}`                                                                                |
 > | `500`         | `application/json`                | `{"message":"Failed to get progress status from worker"}`                                                                  |
@@ -158,6 +160,34 @@ Go to http://localhost:8080/upload-form to upload file from webview.
 
 > ```bash
 >  curl --location 'http://localhost:8080/upload/status/7b1cdab9-40eb-49a3-bced-7523b8a3590e'
+> ```
+
+</details>
+
+### Upload File Status
+
+<details>
+ <summary><code>DELETE</code> <code><b>/delete/{uuid}</b></code> <code>(Deletes all contacts by Uuid)</code></summary>
+
+#### Parameters
+
+> | name      |  type                | content-type            | description                            |
+> |-----------|----------------------|-------------------------|----------------------------------------|
+> | uuid      |  string              | text/html               |  identifier of file linked to contacts |
+
+
+#### Responses
+
+> | http code     | content-type           | response       
+> |---------------|------------------------|------------------------------------------------|
+> | `200`         | `application/json`     | `{"message": "Contacts are being deleted"}`    |
+> | `409`         | `application/json`     | `{"message":"Upload is not completed yet"}`    |
+> | `500`         | `application/json`     | `{"message":"Failed to publish job"}`          |
+
+#### Example cURL
+
+> ```bash
+>  curl -X DELETE --location 'http://localhost:8080/delete/7b1cdab9-40eb-49a3-bced-7523b8a3590e'
 > ```
 
 </details>

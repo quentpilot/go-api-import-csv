@@ -23,6 +23,12 @@ type JobPublisher interface {
 	PublishImportJob(path string, maxRows int) error
 }
 
+func HtmlUpload() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.HTML(http.StatusOK, "upload.html", nil)
+	}
+}
+
 // Upload contacts file webservice
 func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 	// TODO: Check file size to limit
@@ -71,10 +77,12 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		}
 
 		statusUrl := publisher.HttpConfig.Host + publisher.HttpConfig.Port + "/upload/status/" + uuid
+		deleteUrl := publisher.HttpConfig.Host + publisher.HttpConfig.Port + "/delete/" + uuid
 		logger.Info("File is being processed", "file", file.Filename, "uuid", uuid, "status_url", statusUrl)
 		c.JSON(http.StatusAccepted, gin.H{
 			"message":    "File is being processed",
 			"status_url": statusUrl,
+			"delete_url": deleteUrl,
 			"uuid":       uuid,
 		})
 	}
@@ -90,63 +98,97 @@ func UploadStatus(p *phonebook.PhonebookHandler) gin.HandlerFunc {
 		uuid := c.Param("uuid")
 		logger.Info("Call endpoint /upload/status", "uuid", uuid)
 
-		// Check cache data
-		if cached, found := cache.CacheApiUploadStatus.Get(uuid); found {
-			logger.Info("Send progress status from cache")
-			c.JSON(http.StatusOK, cached)
-			return
-		}
-
-		// Call worker API
-		url := fmt.Sprintf("http://worker:9090/upload/status/%s", uuid)
-		logger.Debug("Call worker API to get progress", "url", url)
-
-		client := http.Client{
-			Timeout: 2 * time.Second,
-		}
-
-		resp, err := client.Get(url)
+		ps, status, err := internalUploadStatus(uuid)
 		if err != nil {
-			if os.IsTimeout(err) {
-				logger.Error("Timeout error getting progress from worker", "error", err)
-				c.JSON(http.StatusGatewayTimeout, gin.H{"message": "Request to worker timed out"})
-				return
-			} else if errors.Is(err, context.DeadlineExceeded) {
-				logger.Error("Deadline exceeded error getting progress from worker", "error", err)
-				c.JSON(http.StatusGatewayTimeout, gin.H{"message": "Request to worker deadline exceeded"})
-				return
-			} else {
-				logger.Error("Error getting progress from worker", "error", err, "status_code", resp.StatusCode)
-				c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to get progress status from worker"})
-				return
-			}
-		}
-		if resp.StatusCode >= http.StatusBadRequest {
-			logger.Error("Error status from worker", "error", err, "status_code", resp.StatusCode, "body", resp.Body)
-			c.JSON(resp.StatusCode, gin.H{"message": "Progess Status Not Found"})
-			return
+			c.JSON(status, gin.H{"message": err.Error()})
 		}
 
-		defer resp.Body.Close()
-		logger.Debug("Worker response received", "status_code", resp.StatusCode)
-
-		// Parse server API response to send client API response
-		ps := &worker.MessageProgressResponse{}
-		if err := json.NewDecoder(resp.Body).Decode(&ps); err != nil {
-			logger.Error("Error decoding progress response", "error", err)
-			c.JSON(http.StatusBadGateway, gin.H{"message": "Corrupted progress status data"})
-			return
-		}
-
-		cache.CacheApiUploadStatus.Set(uuid, ps, 0)
 		logger.Info("Progress status received", "status", ps.Status, "total_rows", ps.Total, "processed_rows", ps.Inserted, "percentile", ps.Percentile)
 
-		c.JSON(resp.StatusCode, ps)
+		c.JSON(status, ps)
 	}
 }
 
-func HtmlUpload() gin.HandlerFunc {
+func internalUploadStatus(uuid string) (message *worker.MessageProgressResponse, statusCode int, err error) {
+	// Check cache data
+	if cached, found := cache.CacheApiUploadStatus.Get(uuid); found {
+		logger.Info("Send progress status from cache")
+		if msg, ok := cached.(*worker.MessageProgressResponse); ok {
+			return msg, http.StatusOK, nil
+		} else {
+			return nil, http.StatusOK, nil
+		}
+	}
+
+	// Call worker API
+	url := fmt.Sprintf("http://worker:9090/upload/status/%s", uuid)
+	logger.Debug("Call worker API to get progress", "url", url)
+
+	client := http.Client{
+		Timeout: 2 * time.Second,
+	}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		if os.IsTimeout(err) {
+			logger.Warn("Timeout error getting progress from worker", "error", err)
+			return nil, http.StatusGatewayTimeout, fmt.Errorf("request to worker timed out")
+		} else if errors.Is(err, context.DeadlineExceeded) {
+			logger.Warn("Deadline exceeded error getting progress from worker", "error", err)
+			return nil, http.StatusGatewayTimeout, fmt.Errorf("request to worker deadline exceeded")
+		} else {
+			logger.Warn("Error getting progress from worker", "error", err, "status_code", resp.StatusCode)
+			return nil, http.StatusInternalServerError, fmt.Errorf("failed to get progress status from worker")
+		}
+	}
+	if resp.StatusCode >= http.StatusBadRequest {
+		logger.Warn("Error status from worker", "error", err, "status_code", resp.StatusCode, "body", resp.Body)
+		return nil, resp.StatusCode, fmt.Errorf("progess status not found")
+	}
+
+	defer resp.Body.Close()
+	logger.Debug("Worker response received", "status_code", resp.StatusCode)
+
+	// Parse server API response to send client API response
+	ps := &worker.MessageProgressResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&ps); err != nil {
+		logger.Error("Error decoding progress response", "error", err)
+		return nil, http.StatusBadGateway, fmt.Errorf("corrupted progress status data")
+	}
+
+	cache.CacheApiUploadStatus.Set(uuid, ps, 0)
+
+	return ps, resp.StatusCode, nil
+}
+
+func Delete(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.HTML(http.StatusOK, "upload.html", nil)
+		uuid := c.Param("uuid")
+		logger.Info("Call endpoint /delete", "uuid", uuid)
+
+		ps, _, err := internalUploadStatus(uuid)
+		if err != nil || ps == nil {
+			logger.Debug("Force delete anyway", "progress", ps, "error", err)
+		}
+
+		if ps != nil && ps.Status != "Completed" {
+			logger.Warn("Cannot delete contacts when upload is not completed")
+			c.JSON(http.StatusConflict, gin.H{"message": "Upload is not completed yet"})
+			return
+		}
+
+		job := &phonebook.FileMessage{
+			Uuid: uuid,
+		}
+
+		logger.Trace("Publishing message to queue", "message", job)
+		if err := publisher.Publish(job, "delete"); err != nil {
+			logger.Error("Error publishing message to queue", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
+			return
+		}
+
+		logger.Info("Contacts are being deleted")
+		c.JSON(http.StatusOK, gin.H{"message": "Contacts are being deleted"})
 	}
 }

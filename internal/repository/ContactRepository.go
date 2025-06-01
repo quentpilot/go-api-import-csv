@@ -11,6 +11,7 @@ type ContactRepository interface {
 	InsertBatch(contacts []*model.Contact) error
 	Truncate() error
 	CountByReqId(reqId string) (int, error)
+	DeleteByReqId(reqId string) error
 }
 
 type contactRepository struct{}
@@ -41,4 +42,9 @@ func (r *contactRepository) CountByReqId(reqId string) (int, error) {
 		return 0, err
 	}
 	return int(count), nil
+}
+
+func (r *contactRepository) DeleteByReqId(reqId string) error {
+	logger.Trace("Delete contacts by req_id...", "req_id", reqId)
+	return db.DB.Where("req_id = ?", reqId).Delete(&model.Contact{}).Error
 }
