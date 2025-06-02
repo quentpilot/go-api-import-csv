@@ -48,6 +48,7 @@ func NewMessageProgressStore() *MessageProgressStore {
 	return &MessageProgressStore{}
 }
 
+// Init sets start time processing file and total rows to insert
 func (s *MessageProgressStore) Init(reqId string, total int64) {
 	var p MessageProgress
 	p.Total.Store(total)
@@ -55,6 +56,7 @@ func (s *MessageProgressStore) Init(reqId string, total int64) {
 	s.counter.Store(reqId, &p)
 }
 
+// Increment updates the total of inserted messages
 func (s *MessageProgressStore) Increment(reqId string, batch int64) {
 	if val, ok := s.counter.Load(reqId); ok {
 		if progress, ok := val.(*MessageProgress); ok {
@@ -65,6 +67,7 @@ func (s *MessageProgressStore) Increment(reqId string, batch int64) {
 	}
 }
 
+// SetError stores last error to track status details
 func (s *MessageProgressStore) SetError(reqId string, err error) {
 	if val, ok := s.counter.Load(reqId); ok {
 		if progress, ok := val.(*MessageProgress); ok {
@@ -73,6 +76,7 @@ func (s *MessageProgressStore) SetError(reqId string, err error) {
 	}
 }
 
+// Get retrieves file progress status from his identifier
 func (s *MessageProgressStore) Get(reqId string) (inserted int64, total int64, duration int64, err error, ok bool) {
 	if val, ok := s.counter.Load(reqId); ok {
 		if progress, ok := val.(*MessageProgress); ok {
@@ -115,6 +119,7 @@ func (s *MessageProgressStore) Handler() http.Handler {
 	return r
 }
 
+// getStatus defines progress status as string following file progress state
 func (s *MessageProgressStore) getStatus(inserted int64, total int64, err error) string {
 	if err != nil {
 		return string(StatusError)

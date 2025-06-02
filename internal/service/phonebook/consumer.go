@@ -22,16 +22,23 @@ func NewPhonebookConsumer(a *config.ApmqConfig, h *config.HttpConfig, d *config.
 func (p *PhonebookHandler) Consume(ctx context.Context) {
 	msgHandler := p.NewMessageHandler()
 
-	for msg := range p.Queue.Consume(true) {
+	for msg := range p.Queue.Consume(false) {
 		ctxT, cancel := context.WithTimeout(ctx, p.AmqpConfig.Lifetime)
 		defer cancel()
 		logger.Trace("Message received from queue", "type", msg.Type, "message", msg.Body)
 
-		if err := msgHandler.Process(ctxT, msg); err != nil {
+		ack, err := msgHandler.Process(ctxT, msg)
+		if err != nil {
 			logger.Error("MessageHandler error", "tag", msg.Type, "error", err)
 		}
 
-		logger.Trace("Message acknowledged")
+		if ack {
+			logger.Debug("Message acknowledged")
+			msg.Ack(false)
+		} else {
+			logger.Debug("Message unacknowledged")
+			msg.Nack(false, true)
+		}
 
 		select {
 		case <-ctxT.Done():

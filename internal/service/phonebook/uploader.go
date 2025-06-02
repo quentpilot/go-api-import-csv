@@ -175,7 +175,7 @@ func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error 
 		//return &FileError{FilePath: file.FilePath, Err: fmt.Errorf("simulate error file")}
 
 		// Batch insert contacts
-		br := c.handleBatchInsert(file, batch, headers, record, false)
+		br := c.handleBatchInsert(ctxT, file, batch, headers, record, false)
 		if br != nil {
 			return db.NewDbError(br)
 		}
@@ -185,7 +185,7 @@ func (c *ContactUploader) uploadFile(ctx context.Context, file *FilePart) error 
 	}
 
 	// Batch insert contacts
-	br := c.handleBatchInsert(file, batch, headers, []string{}, true)
+	br := c.handleBatchInsert(ctxT, file, batch, headers, []string{}, true)
 	if br != nil {
 		return db.NewDbError(fmt.Errorf("error while forcing insert batch contacts: %w", br))
 	}

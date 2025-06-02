@@ -6,6 +6,7 @@ import (
 	"go-csv-import/internal/amqp"
 	"go-csv-import/internal/db"
 	"go-csv-import/internal/logger"
+	"strings"
 	"time"
 
 	rabbit "github.com/streadway/amqp"
@@ -19,7 +20,7 @@ const (
 	MessageTypeDelete MessageType = "delete"
 )
 
-type MessageHandlerFunc func(ctx context.Context, body []byte) error
+type MessageHandlerFunc func(ctx context.Context, msg rabbit.Delivery) (ack bool, err error)
 
 // MessageHandler stores functions strategies to handle an AMQP message
 type MessageHandler struct {
@@ -43,56 +44,63 @@ func (p *PhonebookHandler) NewMessageHandler() *MessageHandler {
 }
 
 // Process runs the function associated to AMQP message type
-func (h *MessageHandler) Process(ctx context.Context, msg rabbit.Delivery) error {
+func (h *MessageHandler) Process(ctx context.Context, msg rabbit.Delivery) (ack bool, err error) {
 	if f, ok := h.handlers[MessageType(msg.Type)]; ok {
-		return f(ctx, msg.Body)
+		return f(ctx, msg)
 	}
-	return fmt.Errorf("MessageHandler not found for type [%s]", msg.Type)
+	return true, fmt.Errorf("MessageHandler not found for type [%s]", msg.Type)
 }
 
-func (p *PhonebookHandler) handleMessageInsertPhonebook(ctx context.Context, body []byte) error {
+func (p *PhonebookHandler) handleMessageInsertPhonebook(ctx context.Context, msg rabbit.Delivery) (ack bool, err error) {
 	// Decode the message body into a FileMessage struct.
 	var file *FileMessage
-	message := amqp.NewJsonMessageDecoder(body)
-	err := message.Decode(&file)
-	if err != nil {
-		logger.Error("Decode AMQP message", "body", body, "error", err, "type", fmt.Sprintf("%T", err))
-		return fmt.Errorf("cannot decode AMQP message for FileMessage")
+	message := amqp.NewJsonMessageDecoder(msg.Body)
+	errd := message.Decode(&file)
+	if errd != nil {
+		logger.Error("Decode AMQP message", "body", msg.Body, "error", err, "type", fmt.Sprintf("%T", err))
+		return true, fmt.Errorf("cannot decode AMQP message for FileMessage")
 	}
 
 	start := time.Now()
 	logger.Info("Treating file", "file", file.FilePath)
 
-	if err := p.Uploader.Upload(ctx, file); err != nil {
-		p.ProgressStore.SetError(file.Uuid, err)
-		p.printTypedErrors(err, file)
+	if erru := p.Uploader.Upload(ctx, file); erru != nil {
+		p.ProgressStore.SetError(file.Uuid, erru)
+		p.printTypedErrors(erru, file)
 	} else {
 		logger.Info("File successful treated", "file", file.FilePath, "time", time.Since(start))
 	}
 
 	file.Remove()
-	return nil
+	return true, nil
 }
 
-func (p *PhonebookHandler) handleMessageDeletePhonebook(ctx context.Context, body []byte) error {
+func (p *PhonebookHandler) handleMessageDeletePhonebook(ctx context.Context, msg rabbit.Delivery) (ack bool, err error) {
 	// Decode the message body into a FileMessage struct.
 	var file *FileMessage
-	message := amqp.NewJsonMessageDecoder(body)
-	err := message.Decode(&file)
-	if err != nil {
-		logger.Error("Decode AMQP message", "body", body, "error", err, "type", fmt.Sprintf("%T", err))
-		return fmt.Errorf("cannot decode AMQP message for FileMessage")
+	message := amqp.NewJsonMessageDecoder(msg.Body)
+	errd := message.Decode(&file)
+	if errd != nil {
+		logger.Error("Decode AMQP message", "body", msg.Body, "error", err, "type", fmt.Sprintf("%T", err))
+		return true, fmt.Errorf("cannot decode AMQP message for FileMessage")
 	}
 
 	start := time.Now()
-	logger.Info("Deleting contacts...")
+	logger.Info("Deleting contacts...", "uuid", file.Uuid)
 
-	err = p.Uploader.Repository.DeleteByReqId(file.Uuid)
+	err = p.Uploader.Repository.DeleteByReqId(ctx, file.Uuid)
 	if err != nil {
+		// TODO: refactor to retry x times with msg headers. log retries and error type to get error with other than Contains
+		if strings.Contains(err.Error(), "Lock wait timeout exceeded") && !msg.Redelivered {
+			logger.Warn("Retrying after lock timeout", "uuid", file.Uuid)
+			time.Sleep(2 * time.Second)
+			return false, err
+		}
+
 		logger.Error("Cannot delete contacts", "error", err)
-		return db.NewDbError(fmt.Errorf("cannot delete contacts: %w", err))
+		return true, db.NewDbError(fmt.Errorf("cannot delete contacts: %w", err))
 	}
 
 	logger.Info("Contacts successful deleted ", "time", time.Since(start))
-	return nil
+	return true, nil
 }

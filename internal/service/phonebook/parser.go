@@ -1,6 +1,7 @@
 package phonebook
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go-csv-import/internal/logger"
@@ -45,7 +46,7 @@ func (c *ContactUploader) createContactFromRow(file *FilePart, header []string, 
 	}, nil
 }
 
-func (c *ContactUploader) handleBatchInsert(file *FilePart, batch *Batch, header []string, row []string, force bool) error {
+func (c *ContactUploader) handleBatchInsert(ctx context.Context, file *FilePart, batch *Batch, header []string, row []string, force bool) error {
 	var err error
 	if len(row) > 0 {
 		c, err := c.createContactFromRow(file, header, row)
@@ -60,7 +61,11 @@ func (c *ContactUploader) handleBatchInsert(file *FilePart, batch *Batch, header
 	if batch.IsReached(c.HttpConfig.BatchInsert) || (force && batch.Length > 0) {
 		//time.Sleep(6 * time.Second)
 		logger.Trace("Batch insert contacts", "total", batch.Length, "force", force)
-		err = c.Repository.InsertBatch(batch.Contacts)
+		err = c.Repository.InsertBatch(ctx, batch.Contacts)
+		if err != nil {
+			return err
+		}
+
 		c.ProgressStore.Increment(file.Uuid, int64(batch.Length))
 		batch.Reset()
 	}
