@@ -11,6 +11,14 @@ import (
 	rabbit "github.com/streadway/amqp"
 )
 
+// AMQP message type handled by phonebook service
+type MessageType string
+
+const (
+	MessageTypeUpload MessageType = "upload"
+	MessageTypeDelete MessageType = "delete"
+)
+
 type MessageHandlerFunc func(ctx context.Context, body []byte) error
 
 // MessageHandler stores functions strategies to handle an AMQP message
@@ -21,22 +29,22 @@ type MessageHandler struct {
 			ctx is the context to propagate
 			body is the AMQP message body
 	*/
-	handlers map[string]MessageHandlerFunc
+	handlers map[MessageType]MessageHandlerFunc
 }
 
 // Initialise map of type and associated strategies
 func (p *PhonebookHandler) NewMessageHandler() *MessageHandler {
 	return &MessageHandler{
-		handlers: map[string]MessageHandlerFunc{
-			"upload": p.handleMessageInsertPhonebook,
-			"delete": p.handleMessageDeletePhonebook,
+		handlers: map[MessageType]MessageHandlerFunc{
+			MessageTypeUpload: p.handleMessageInsertPhonebook,
+			MessageTypeDelete: p.handleMessageDeletePhonebook,
 		},
 	}
 }
 
 // Process runs the function associated to AMQP message type
 func (h *MessageHandler) Process(ctx context.Context, msg rabbit.Delivery) error {
-	if f, ok := h.handlers[msg.Type]; ok {
+	if f, ok := h.handlers[MessageType(msg.Type)]; ok {
 		return f(ctx, msg.Body)
 	}
 	return fmt.Errorf("MessageHandler not found for type [%s]", msg.Type)

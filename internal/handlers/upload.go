@@ -70,7 +70,7 @@ func Upload(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		}
 
 		logger.Trace("Publishing message to queue", "message", job)
-		if err := publisher.Publish(job, "upload"); err != nil {
+		if err := publisher.Publish(job, phonebook.MessageTypeUpload); err != nil {
 			logger.Error("Error publishing message to queue", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
 			return
@@ -166,12 +166,12 @@ func Delete(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		uuid := c.Param("uuid")
 		logger.Info("Call endpoint /delete", "uuid", uuid)
 
-		ps, _, err := internalUploadStatus(uuid)
+		ps, status, err := internalUploadStatus(uuid)
 		if err != nil || ps == nil {
 			logger.Debug("Force delete anyway", "progress", ps, "error", err)
 		}
 
-		if ps != nil && ps.Status != "Completed" {
+		if !validation.IsSafeDeletable(ps, status) {
 			logger.Warn("Cannot delete contacts when upload is not completed")
 			c.JSON(http.StatusConflict, gin.H{"message": "Upload is not completed yet"})
 			return
@@ -182,7 +182,7 @@ func Delete(publisher *phonebook.PhonebookHandler) gin.HandlerFunc {
 		}
 
 		logger.Trace("Publishing message to queue", "message", job)
-		if err := publisher.Publish(job, "delete"); err != nil {
+		if err := publisher.Publish(job, phonebook.MessageTypeDelete); err != nil {
 			logger.Error("Error publishing message to queue", "error", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to publish job"})
 			return

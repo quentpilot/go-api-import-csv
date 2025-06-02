@@ -11,6 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type MessageProgressStatusType string
+
+const (
+	StatusScheduled  MessageProgressStatusType = "Scheduled"
+	StatusProcessing MessageProgressStatusType = "Processing"
+	StatusCompleted  MessageProgressStatusType = "Completed"
+	StatusError      MessageProgressStatusType = "Error"
+)
+
 // MessageProgressStore stores all progress file infos to deliver from API.
 type MessageProgressStore struct {
 	counter sync.Map
@@ -90,7 +99,7 @@ func (s *MessageProgressStore) Handler() http.Handler {
 			}
 
 			statusCode := http.StatusOK
-			if resp.Status == "Error" {
+			if resp.Status == string(StatusError) {
 				statusCode = http.StatusMultiStatus
 				logger.Error("Progress Error Found", "error", err.Error())
 				resp.Status += ": " + err.Error()
@@ -108,11 +117,11 @@ func (s *MessageProgressStore) Handler() http.Handler {
 
 func (s *MessageProgressStore) getStatus(inserted int64, total int64, err error) string {
 	if err != nil {
-		return "Error"
+		return string(StatusError)
 	} else if inserted == 0 {
-		return "Scheduled"
+		return string(StatusScheduled)
 	} else if inserted < total {
-		return "Processing"
+		return string(StatusProcessing)
 	}
-	return "Completed"
+	return string(StatusCompleted)
 }

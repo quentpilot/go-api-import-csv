@@ -164,7 +164,7 @@ Go to http://localhost:8080/upload-form to upload file from webview.
 
 </details>
 
-### Upload File Status
+### Delete Contacts
 
 <details>
  <summary><code>DELETE</code> <code><b>/delete/{uuid}</b></code> <code>(Deletes all contacts by Uuid)</code></summary>
