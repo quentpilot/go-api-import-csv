@@ -5,6 +5,8 @@ import (
 	"go-csv-import/internal/db"
 	"go-csv-import/internal/logger"
 	"go-csv-import/internal/model"
+
+	"gorm.io/hints"
 )
 
 type ContactRepository interface {
@@ -26,7 +28,7 @@ func (r *contactRepository) Insert(c *model.Contact) error {
 }
 
 func (r *contactRepository) InsertBatch(ctx context.Context, c []*model.Contact) error {
-	return db.DB.Create(c).Error
+	return db.DB.Clauses(hints.IgnoreIndex("idx_req_id")).Create(c).Error
 }
 
 func (r *contactRepository) Truncate() error {
