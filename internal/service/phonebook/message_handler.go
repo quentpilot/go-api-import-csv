@@ -25,10 +25,7 @@ type MessageHandlerFunc func(ctx context.Context, msg rabbit.Delivery) (ack bool
 // MessageHandler stores functions strategies to handle an AMQP message
 type MessageHandler struct {
 	/*
-		handlers maps AMQP message type with accosiated function to launch.
-
-			ctx is the context to propagate
-			body is the AMQP message body
+		handlers maps AMQP message type with associated function to launch.
 	*/
 	handlers map[MessageType]MessageHandlerFunc
 }

@@ -99,7 +99,7 @@ func (s *MessageProgressStore) Handler() http.Handler {
 				Inserted:   inserted,
 				Percentile: utils.MathRound(float64(inserted)/float64(total)*100, 3),
 				Status:     s.getStatus(inserted, total, err),
-				Duration:   time.Duration(duration).String(),
+				Duration:   time.Duration(duration).Round(time.Millisecond).String(),
 			}
 
 			statusCode := http.StatusOK

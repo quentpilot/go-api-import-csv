@@ -9,36 +9,34 @@ import (
 	"gorm.io/hints"
 )
 
-type ContactRepository interface {
+type Repository interface {
 	Insert(contact *model.Contact) error
 	InsertBatch(ctx context.Context, contacts []*model.Contact) error
 	Truncate() error
-	CountByReqId(reqId string) (int, error)
-	DeleteByReqId(ctx context.Context, reqId string) error
 }
 
-type contactRepository struct{}
+type ContactRepository struct{}
 
-func NewContactRepository() *contactRepository {
-	return &contactRepository{}
+func NewContactRepository() *ContactRepository {
+	return &ContactRepository{}
 }
 
-func (r *contactRepository) Insert(c *model.Contact) error {
+func (r *ContactRepository) Insert(c *model.Contact) error {
 	return db.DB.Create(c).Error
 }
 
-func (r *contactRepository) InsertBatch(ctx context.Context, c []*model.Contact) error {
+func (r *ContactRepository) InsertBatch(ctx context.Context, c []*model.Contact) error {
 	return db.DB.Clauses(hints.IgnoreIndex("idx_req_id")).Create(c).Error
 }
 
-func (r *contactRepository) Truncate() error {
+func (r *ContactRepository) Truncate() error {
 	logger.Trace("Truncating contacts table...")
 	err := db.DB.Exec("TRUNCATE TABLE contacts").Error
 	logger.Trace("...Contacts table trucated")
 	return err
 }
 
-func (r *contactRepository) CountByReqId(reqId string) (int, error) {
+func (r *ContactRepository) CountByReqId(reqId string) (int, error) {
 	var count int64
 	err := db.DB.Where("req_id = ?", reqId).Model(&model.Contact{}).Count(&count).Error
 	if err != nil {
@@ -47,7 +45,7 @@ func (r *contactRepository) CountByReqId(reqId string) (int, error) {
 	return int(count), nil
 }
 
-func (r *contactRepository) DeleteByReqId(ctx context.Context, reqId string) error {
+func (r *ContactRepository) DeleteByReqId(ctx context.Context, reqId string) error {
 	return db.DB.
 		WithContext(ctx).
 		Where("req_id = ?", reqId).

@@ -26,7 +26,7 @@ type UploaderService interface {
 type ContactUploader struct {
 	HttpConfig    *config.HttpConfig
 	DbConfig      *config.DbConfig
-	Repository    repository.ContactRepository
+	Repository    *repository.ContactRepository
 	ProgressStore *worker.MessageProgressStore
 }
 

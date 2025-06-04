@@ -216,10 +216,21 @@ When loading Docker containers, command `make reload` sends a signal to hot relo
 
 
 ## 🕙 Roadmap
-1. Implement testing
+1. Implement full Go tests (units, mocks, fuzz, bench,...)
 2. Benchmark performances with time and memory consumption
-    1. Tests with empty datatable to insert 1M rows
-    2. Tests with already filled datatable of 1M rows or more
-3. Add PHP/Symfony Docker service to create the same API/Test/Benchmark scenario
-4. Add a REST response to /upload with another endpoint (uuid) to follow upload status in percentile
-5. Implements a GUI to select a file to upload and an a progressbar
+    1. ✅ Tests with empty datatable to insert 1M rows
+    2. ✅ Tests with already filled datatable of 1M rows or more
+    3. Implement benchmark tests provided by Go Benchmark
+3. ✅ Add a REST response to /upload with another endpoint (uuid) to follow upload status in percentile
+4. ✅ Implements a GUI to select a file to upload and an a progressbar
+    1. Datatable and IHM to see and action on history of upload (list of uuids)
+    2. status recap for each uuid stored in database (like endpoint)
+    3. Clear on or all data from database
+5. Add webhooks to notify status of asynchronous tasks
+6. Provide public packages to reuse some tools
+    1. Generic middlewares
+    2. CSV generator with wanted headers and options to feed faker datas
+    3. E2E API/AMQP/Model/INSERT CSV datas
+    4. Batch data handler
+
+X. Add PHP/Symfony Docker service to create the same API/Test/Benchmark scenario

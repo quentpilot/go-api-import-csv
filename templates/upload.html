@@ -92,6 +92,9 @@
             <input type="file" name="file" id="file" required>
             <button type="submit">Upload</button>
         </form>
+        <div class="flex" id="token" style="margin-top: 20px; display: none;">
+            <div style="font-weight: 600;">Token: <span id="uuid" style="font-weight: 400;"></span></div>
+        </div>
         <div class="flex" style="margin-top: 20px;">
             <div style="font-weight: 600;">File upload progress</div>
             <div id="progress" class="progress"><div id="bar" class="bar">0%</div></div>
@@ -113,11 +116,15 @@ document.getElementById("uploadForm").addEventListener("submit", function(e) {
     const bar = document.getElementById("bar");
     const bar2 = document.getElementById("bar2");
     const result = document.getElementById("result");
+    const token = document.getElementById("token");
+    const uuid = document.getElementById("uuid")
 
     // Reset bars and result
     bar.style.width = "0%"
     bar2.style.width = "0%"
     result.innerHTML = ""
+    token.style.display = "none";
+    uuid.innerHTML = ""
 
 	const fileInput = document.getElementById("file");
 	const file = fileInput.files[0];
@@ -143,6 +150,10 @@ document.getElementById("uploadForm").addEventListener("submit", function(e) {
 		console.log("Upload Response", "StatusCode: " +xhr.status, "Body", xhr.responseText)
 		if (xhr.status === 202) {
             message = JSON.parse(xhr.responseText)
+
+            token.style.display = "block";
+            uuid.innerHTML = message.uuid;
+
 			result.innerHTML = "👌​​ "+ message.message;
             if (message.status_url) {
                 pollProgress(message.status_url);
@@ -189,7 +200,7 @@ function pollProgress(statusUrl) {
                     
                     if (percent == 100 || data.Status === "Completed") {
                         console.log("Import Done")
-                        result.innerHTML = "🎉​ Contacts Uploaded";
+                        result.innerHTML = "🎉​ Contacts Uploaded in "+data.Duration;
                         clearInterval(intervalId);
                         triggerEmojiSparkles(bar2)
                         triggerSparkles(result)
