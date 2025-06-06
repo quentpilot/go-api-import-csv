@@ -22,11 +22,19 @@ type UploadRouter struct {
 }
 
 func (r UploadRouter) Load(s *gin.Engine) {
+	// todo: add routes to search, cancel, delete from uuid. use amqp tags
+	// Root
 	s.GET("/ping", handlers.HealthCheck)
+
+	// Upload
 	s.POST("/upload", middleware.Timeout(5*time.Second), middleware.LimitRequestSize(r.HttpConfig.MaxContentLength), handlers.Upload(r.Services.PhonebookUploader))
 	s.GET("/upload/status/:uuid", handlers.UploadStatus(r.Services.PhonebookUploader))
 	s.DELETE("/delete/:uuid", handlers.Delete(r.Services.PhonebookUploader))
-	// todo: add routes to search, cancel, delete from uuid. use amqp tags
+
+	// Chat AI
+	s.POST("/ask", middleware.Timeout(120*time.Second), handlers.ChatWithOllama())
+
+	// Frontend
 	s.LoadHTMLGlob("templates/*")
 	s.GET("/upload-form", handlers.HtmlUpload())
 	logger.Debug("Upload route registered")
