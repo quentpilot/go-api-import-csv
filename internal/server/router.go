@@ -32,7 +32,8 @@ func (r UploadRouter) Load(s *gin.Engine) {
 	s.DELETE("/delete/:uuid", handlers.Delete(r.Services.PhonebookUploader))
 
 	// Chat AI
-	s.POST("/ask", middleware.Timeout(120*time.Second), handlers.ChatWithOllama())
+	s.POST("/ask", middleware.Timeout(120*time.Second), handlers.AskOllama())
+	s.POST("/chat", middleware.Timeout(120*time.Second), handlers.ChatWithOllama())
 
 	// Frontend
 	s.LoadHTMLGlob("templates/*")
