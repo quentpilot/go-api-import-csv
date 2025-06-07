@@ -32,6 +32,9 @@ type OllamaChunkResponse struct {
 	Done      bool   `json:"done"`
 }
 
+type OllamaStreamResponse struct {
+}
+
 // Simple ask a question and return single response string
 func AskOllama() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -141,6 +144,7 @@ func ChatWithOllama() gin.HandlerFunc {
 			c.Writer.Flush()
 
 			if chunk.Done {
+				//TODO: implement final OllamaStreamResponse type to get details
 				break
 			}
 		}
